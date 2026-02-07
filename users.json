@@ -1,0 +1,19 @@
+[
+  {
+    "email": "annelecreative@gmail.com",
+    "preferences": [
+      {
+        "label": "SFO to Bangkok",
+        "origins": ["SFO"],
+        "destinations": ["BKK"],
+        "max_price": 1500,
+        "currency": "USD",
+        "start_date": "2026-02-01",
+        "days_ahead": 14,
+        "max_dates_to_check": 3,
+        "adults": 1,
+        "cabin_class": "economy"
+      }
+    ]
+  }
+]

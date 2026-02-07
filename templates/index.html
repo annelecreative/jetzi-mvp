@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flight Alert Builder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Create Flight Alert</h1>
+
+      <form id="alert-form" action="/alerts/create" method="post" novalidate>
+        <div class="field">
+          <label for="origin-input">Departure</label>
+          <input
+            id="origin-input"
+            name="origin_text"
+            type="text"
+            autocomplete="off"
+            placeholder="Type airport code, city, or name"
+          />
+          <input id="origin-airport-code" name="origin_airport_code" type="hidden" />
+          <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
+        </div>
+
+        <div class="field">
+          <label for="destination-input">Destinations</label>
+          <input
+            id="destination-input"
+            name="destination_text"
+            type="text"
+            autocomplete="off"
+            placeholder="Search and select one or more destinations"
+          />
+          <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
+
+          <div id="destination-chips" class="chips"></div>
+          <input id="destination-airport-codes" name="destination_airport_codes" type="hidden" value="[]" />
+        </div>
+
+        <p id="form-error" class="error hidden"></p>
+        <button type="submit">Create Alert</button>
+      </form>
+
+      <pre id="result" class="result hidden"></pre>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
