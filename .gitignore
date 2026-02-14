@@ -18,3 +18,5 @@ venv/
 # Optional: logs
 *.log
 data/alerts.json
+users.json
+data/alerts.json
