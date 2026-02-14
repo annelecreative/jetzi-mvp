@@ -1,136 +1,108 @@
 #!/usr/bin/env python3
-import difflib
-import json
-from pathlib import Path
-from typing import Dict, List, Tuple
+import os
 
-from flask import Flask, jsonify, render_template, request
+import config as app_config
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
-
-BASE_DIR = Path(__file__).resolve().parent
-AIRPORTS_PATH = BASE_DIR / "data" / "airports_min.json"
+from services import alerts as alert_service
+from services import flights as flight_service
 
 
-def load_airports() -> List[Dict[str, str]]:
-    raw = json.loads(AIRPORTS_PATH.read_text(encoding="utf-8"))
-    airports = []
-    for item in raw:
-        airports.append(
-            {
-                "code": str(item.get("code", "")).upper().strip(),
-                "name": str(item.get("name", "")).strip(),
-                "city": str(item.get("city", "")).strip(),
-                "country": str(item.get("country", "")).strip(),
-            }
-        )
-    return airports
+AIRPORTS = flight_service.load_airports()
+flight_service.assert_required_airports_present(AIRPORTS)
+AIRPORTS_BY_CODE = flight_service.airports_by_code(AIRPORTS)
 
-
-AIRPORTS = load_airports()
+# Normalize old records (adds status/email/unsubscribe_token defaults).
+alert_service.load_alert_records()
 
 app = Flask(__name__)
-
-
-def _norm(value: str) -> str:
-    return (value or "").strip().lower()
-
-
-def _fuzzy_score(query: str, airport: Dict[str, str]) -> float:
-    fields = [
-        _norm(airport["code"]),
-        _norm(airport["city"]),
-        _norm(airport["name"]),
-        _norm(f"{airport['city']} {airport['name']}"),
-    ]
-    return max(difflib.SequenceMatcher(a=query, b=field).ratio() for field in fields)
-
-
-def _rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    q = _norm(query)
-    ranked: List[Tuple[Tuple[float, str], Dict[str, str]]] = []
-
-    for airport in airports:
-        code = _norm(airport["code"])
-        city = _norm(airport["city"])
-        name = _norm(airport["name"])
-
-        # Group 0: exact IATA code match
-        if code == q:
-            key = (0.0, code)
-            ranked.append((key, airport))
-            continue
-
-        # Group 1: prefix match on code/city/name
-        if code.startswith(q):
-            key = (1.0, code)
-            ranked.append((key, airport))
-            continue
-        if city.startswith(q) or name.startswith(q):
-            key = (2.0, code)
-            ranked.append((key, airport))
-            continue
-
-        # Group 2: contains match
-        if q in city or q in name:
-            key = (3.0, code)
-            ranked.append((key, airport))
-            continue
-
-        # Group 3: light fuzzy for misspellings
-        ratio = _fuzzy_score(q, airport)
-        if ratio >= 0.72:
-            key = (4.0 - ratio, code)
-            ranked.append((key, airport))
-
-    ranked.sort(key=lambda pair: pair[0])
-    return [item for _, item in ranked[:10]]
+app.config["SECRET_KEY"] = os.getenv(
+    "FLASK_SECRET_KEY", getattr(app_config, "FLASK_SECRET_KEY", "dev-only-change-me")
+)
+ALERT_SESSION_KEY = "last_alert"
 
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    if request.args.get("fresh") == "1":
+        session.pop(ALERT_SESSION_KEY, None)
+    initial_alert = session.get(ALERT_SESSION_KEY) if request.args.get("restore") == "1" else None
+    return render_template("index.html", initial_alert=initial_alert)
+
+
+@app.get("/alert-created")
+def alert_created():
+    alert = session.get(ALERT_SESSION_KEY)
+    if not alert:
+        return redirect(url_for("index"))
+
+    return render_template(
+        "success.html",
+        alert=alert,
+        summary=alert_service.build_alert_summary(alert),
+        email_error=None,
+        email_value=alert.get("email", "") or "",
+    )
+
+
+@app.get("/alerts/activated")
+def alerts_activated():
+    alert = session.get(ALERT_SESSION_KEY)
+    if not alert or alert.get("status") != "active":
+        return redirect(url_for("index"))
+    return render_template("activated.html", alert=alert)
+
+
+@app.get("/unsubscribe/<token>")
+def unsubscribe(token: str):
+    alert = alert_service.unsubscribe_alert(token)
+    return render_template("unsubscribe.html", unsubscribed=bool(alert), alert=alert)
 
 
 @app.get("/api/airports/search")
 def search_airports():
-    q = request.args.get("q", "").strip()
-    if len(q) < 2:
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
         return jsonify({"error": "Query must be at least 2 characters", "items": []}), 400
 
-    items = _rank_airports(q, AIRPORTS)
+    items = flight_service.rank_airports(query, AIRPORTS)
     return jsonify({"items": items})
 
 
 @app.post("/alerts/create")
 def create_alert():
-    origin_airport_code = request.form.get("origin_airport_code", "").strip().upper()
-    destination_codes_raw = request.form.get("destination_airport_codes", "[]")
+    alert, error = alert_service.validate_and_build_alert(request.form, AIRPORTS_BY_CODE)
+    if error:
+        return jsonify({"error": error}), 400
 
-    try:
-        destination_airport_codes = json.loads(destination_codes_raw)
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid destination list format"}), 400
+    created = alert_service.append_alert_record(alert)
+    session[ALERT_SESSION_KEY] = created
+    return jsonify({"ok": True, **created, "redirect_url": url_for("alert_created")})
 
-    if not origin_airport_code:
-        return jsonify({"error": "origin_airport_code is required"}), 400
-    if not isinstance(destination_airport_codes, list) or len(destination_airport_codes) < 1:
-        return jsonify({"error": "At least one destination airport is required"}), 400
 
-    cleaned_destinations = []
-    for code in destination_airport_codes:
-        if isinstance(code, str) and code.strip():
-            cleaned_destinations.append(code.strip().upper())
+@app.post("/alerts/confirm-email")
+def confirm_alert_email():
+    alert = session.get(ALERT_SESSION_KEY)
+    if not alert:
+        return redirect(url_for("index"))
 
-    if len(cleaned_destinations) < 1:
-        return jsonify({"error": "At least one destination airport is required"}), 400
-
-    return jsonify(
-        {
-            "ok": True,
-            "origin_airport_code": origin_airport_code,
-            "destination_airport_codes": cleaned_destinations,
-        }
+    updated, error = alert_service.activate_alert_with_email(
+        alert.get("alert_id", ""), request.form.get("email", "")
     )
+    if error:
+        return (
+            render_template(
+                "success.html",
+                alert=alert,
+                summary=alert_service.build_alert_summary(alert),
+                email_error=error,
+                email_value=request.form.get("email", "").strip(),
+            ),
+            400,
+        )
+
+    session[ALERT_SESSION_KEY] = updated
+    return redirect(url_for("alerts_activated"))
 
 
 if __name__ == "__main__":

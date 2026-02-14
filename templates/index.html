@@ -3,49 +3,139 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flight Alert Builder</title>
+    <title>Jetzi</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   </head>
   <body>
     <main class="container">
-      <h1>Create Flight Alert</h1>
+      <h1>Create Jetzi Alert</h1>
 
       <form id="alert-form" action="/alerts/create" method="post" novalidate>
+        <p id="form-error" class="error error-banner hidden"></p>
         <div class="field">
           <label for="origin-input">Departure</label>
-          <input
-            id="origin-input"
-            name="origin_text"
-            type="text"
-            autocomplete="off"
-            placeholder="Type airport code, city, or name"
-          />
+          <div id="origin-autocomplete-anchor" class="autocomplete-anchor">
+            <div id="origin-input-shell" class="chips-input" tabindex="0">
+              <div id="origin-chip" class="chips"></div>
+              <input
+                id="origin-input"
+                name="origin_text"
+                type="text"
+                autocomplete="off"
+                placeholder="Search departure airport"
+              />
+            </div>
+            <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
+          </div>
           <input id="origin-airport-code" name="origin_airport_code" type="hidden" />
-          <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
+          <p id="origin-error" class="field-error hidden"></p>
         </div>
 
         <div class="field">
           <label for="destination-input">Destinations</label>
-          <input
-            id="destination-input"
-            name="destination_text"
-            type="text"
-            autocomplete="off"
-            placeholder="Search and select one or more destinations"
-          />
-          <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
+          <div id="destination-autocomplete-anchor" class="autocomplete-anchor">
+            <div id="destination-input-shell" class="chips-input" tabindex="0">
+              <div id="destination-chips" class="chips"></div>
+              <input
+                id="destination-input"
+                name="destination_text"
+                type="text"
+                autocomplete="off"
+                placeholder="Search and select destinations"
+              />
+            </div>
+            <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
+          </div>
 
-          <div id="destination-chips" class="chips"></div>
+          <div class="field-meta">
+            <div>
+              <p class="helper-text">Up to 5 destinations</p>
+              <p class="helper-tip">(You can create more alerts later for other trips)</p>
+            </div>
+            <button id="clear-destinations" class="link-button hidden" type="button">Clear all</button>
+          </div>
+          <p id="destination-error" class="field-error hidden"></p>
           <input id="destination-airport-codes" name="destination_airport_codes" type="hidden" value="[]" />
         </div>
 
-        <p id="form-error" class="error hidden"></p>
+        <div class="field">
+          <label>Trip type</label>
+          <div class="inline-options">
+            <label class="inline-option">
+              <input type="radio" name="trip_type" value="round_trip" checked />
+              <span>Round trip</span>
+            </label>
+            <label class="inline-option">
+              <input type="radio" name="trip_type" value="one_way" />
+              <span>One way</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="travelers-input">Number of adult travelers</label>
+          <input id="travelers-input" name="travelers" type="number" min="1" max="4" value="1" required />
+          <p class="helper-text">Up to 4 adults</p>
+          <p id="travelers-error" class="field-error hidden"></p>
+        </div>
+
+        <div class="field">
+          <label for="max-price-input">Maximum price per traveler</label>
+          <input id="max-price-input" name="max_price_per_traveler" type="number" min="1" value="1" required />
+          <p id="max-price-error" class="field-error hidden"></p>
+        </div>
+
+        <div class="field">
+          <label>Available departure days</label>
+          <div id="available-days" class="day-buttons">
+            <button type="button" class="day-button" data-day="mon">Mon</button>
+            <button type="button" class="day-button" data-day="tue">Tue</button>
+            <button type="button" class="day-button" data-day="wed">Wed</button>
+            <button type="button" class="day-button" data-day="thu">Thu</button>
+            <button type="button" class="day-button" data-day="fri">Fri</button>
+            <button type="button" class="day-button" data-day="sat">Sat</button>
+            <button type="button" class="day-button" data-day="sun">Sun</button>
+          </div>
+          <input id="available-days-input" name="available_departure_days" type="hidden" value="[]" />
+          <p id="available-days-error" class="field-error hidden"></p>
+        </div>
+
+        <div class="field">
+          <label for="min-days-input">Minimum number of days to travel</label>
+          <input id="min-days-input" name="min_days" type="number" min="1" value="1" required />
+          <p id="min-days-error" class="field-error hidden"></p>
+        </div>
+
+        <div id="frequency-field" class="field">
+          <label>Notification frequency</label>
+          <div class="inline-options">
+            <label class="inline-option">
+              <input type="radio" name="frequency" value="immediately" checked />
+              <span>Immediately</span>
+            </label>
+            <label class="inline-option">
+              <input type="radio" name="frequency" value="daily" />
+              <span>Daily digest</span>
+            </label>
+          </div>
+          <p id="frequency-error" class="field-error hidden"></p>
+        </div>
+
+        <div id="only-matching-field" class="field hidden">
+          <label class="inline-option">
+            <input id="only-matching-input" name="only_send_matching_deals" type="checkbox" checked disabled />
+            <span>Only send matching deals</span>
+          </label>
+        </div>
+
+        <p id="cta-hint" class="cta-hint hidden">Complete the required fields to create your alert.</p>
         <button type="submit">Create Alert</button>
       </form>
-
-      <pre id="result" class="result hidden"></pre>
     </main>
 
+    <script>
+      window.__INITIAL_ALERT__ = {{ initial_alert | tojson }};
+    </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>

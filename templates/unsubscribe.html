@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jetzi - Unsubscribe</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      {% if unsubscribed %}
+      <h1>You are unsubscribed</h1>
+      <p class="helper-text success-message">Your Jetzi alert emails have been turned off.</p>
+      {% if alert %}
+      <section class="success-card">
+        <div class="summary-row">
+          <span class="summary-label">Alert ID</span>
+          <span>{{ alert.alert_id }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Status</span>
+          <span>Unsubscribed</span>
+        </div>
+      </section>
+      {% endif %}
+      {% else %}
+      <h1>Unsubscribe link is invalid</h1>
+      <p class="helper-text success-message">We could not find this alert. It may already be removed.</p>
+      {% endif %}
+
+      <div class="page-actions">
+        <a class="button-link" href="{{ url_for('index') }}">Back to Jetzi</a>
+      </div>
+    </main>
+  </body>
+</html>

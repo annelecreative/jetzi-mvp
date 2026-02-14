@@ -27,18 +27,28 @@ h1 {
   margin-bottom: 1.25rem;
 }
 
+.autocomplete-anchor {
+  position: relative;
+}
+
 label {
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="number"] {
   width: 100%;
   padding: 0.65rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 0.95rem;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: #0f766e;
 }
 
 button[type="submit"] {
@@ -51,9 +61,14 @@ button[type="submit"] {
   cursor: pointer;
 }
 
+button[type="submit"]:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
 .dropdown {
   position: absolute;
-  z-index: 20;
+  z-index: 30;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
@@ -80,6 +95,10 @@ button[type="submit"] {
   background: #f3f4f6;
 }
 
+.dropdown-item.active {
+  background: #e5e7eb;
+}
+
 .dropdown-item span {
   color: #4b5563;
 }
@@ -88,7 +107,6 @@ button[type="submit"] {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-top: 0.7rem;
 }
 
 .chip {
@@ -109,9 +127,106 @@ button[type="submit"] {
   font-weight: 700;
 }
 
+.chips-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  background: #fff;
+}
+
+.chips-input:focus-within {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.chips-input input[type="text"] {
+  border: 0;
+  outline: none;
+  flex: 1;
+  min-width: 190px;
+  padding: 0.3rem 0.2rem;
+}
+
+.field-meta {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.helper-text {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.86rem;
+}
+
+.helper-tip {
+  margin: 0.15rem 0 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
 .error {
   color: #b91c1c;
   margin: 0.5rem 0 1rem;
+}
+
+.error-banner {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+
+.field-error {
+  color: #b91c1c;
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+}
+
+.cta-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.86rem;
+  color: #6b7280;
+}
+
+.chips-input.is-invalid,
+input[type="text"].is-invalid,
+input[type="number"].is-invalid,
+.day-buttons.is-invalid {
+  border-color: #dc2626;
+}
+
+.day-buttons.is-invalid {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  padding: 0.35rem;
+}
+
+#frequency-field.is-invalid .inline-options {
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
 }
 
 .result {
@@ -120,6 +235,103 @@ button[type="submit"] {
   padding: 0.8rem;
   border-radius: 8px;
   overflow-x: auto;
+}
+
+.success-message {
+  margin-bottom: 1rem;
+}
+
+.success-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fafafa;
+}
+
+.success-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.9rem;
+  font-size: 1rem;
+}
+
+.summary-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+  align-items: flex-start;
+}
+
+.summary-label {
+  min-width: 180px;
+  font-weight: 600;
+}
+
+.page-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.email-capture-card {
+  margin-top: 1rem;
+}
+
+.email-capture-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.button-link-secondary {
+  background: #fff;
+  color: #0f766e;
+}
+
+.inline-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.inline-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+.day-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.day-button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.day-button.selected {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  color: #115e59;
 }
 
 .hidden {

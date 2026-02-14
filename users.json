@@ -6,7 +6,7 @@
         "label": "SFO to Bangkok",
         "origins": ["SFO"],
         "destinations": ["BKK"],
-        "max_price": 1500,
+        "max_price_per_traveler": 1500,
         "currency": "USD",
         "start_date": "2026-02-01",
         "days_ahead": 14,

@@ -70,7 +70,7 @@ PREFERENCES = [
         "label": "SFO to Paris",
         "origins": ["SFO"],
         "destinations": ["CDG"],
-        "max_price": 1200.0,
+        "max_price_per_traveler": 1200.0,
         "currency": "USD",
         "start_date": "2026-02-01",
         "days_ahead": 14,
@@ -82,7 +82,7 @@ PREFERENCES = [
         "label": "SFO to Bangkok",
         "origins": ["SFO"],
         "destinations": ["BKK"],
-        "max_price": 1500.0,
+        "max_price_per_traveler": 1500.0,
         "currency": "USD",
         "start_date": "2026-02-01",
         "days_ahead": 14,
@@ -403,7 +403,7 @@ def build_consolidated_email(
     destination: str,
     grouped: Dict[str, List[Deal]],  # date_iso -> deals
     currency: str,
-    max_price: float,
+    max_price_per_traveler: float,
     links_cache: Dict[Tuple[str, str, str], str],
 ) -> Tuple[str, str, str]:
     # Subject uses human-friendly date if only one date, otherwise "N dates"
@@ -416,7 +416,7 @@ def build_consolidated_email(
     header_txt = [
         f"{label}",
         f"Route: {origin} → {destination}",
-        f"Max price: {max_price:g} {currency}",
+        f"Max price per traveler: {max_price_per_traveler:g} {currency}",
         "",
         "Deals grouped by date:",
         "",
@@ -425,7 +425,7 @@ def build_consolidated_email(
     header_html = [
         f"<h2>{label}</h2>",
         f"<p><b>Route:</b> {origin} → {destination}<br/>"
-        f"<b>Max price:</b> {max_price:g} {currency}</p>",
+        f"<b>Max price per traveler:</b> {max_price_per_traveler:g} {currency}</p>",
         "<hr/>",
     ]
 
@@ -532,7 +532,7 @@ def main():
         # For each preference, consolidate emails by (origin,dest)
         for pref in prefs:
             label = pref.get("label", "Deals")
-            max_price = float(pref.get("max_price", 999999))
+            max_price_per_traveler = float(pref.get("max_price_per_traveler", 999999))
             currency = pref.get("currency", DEFAULT_CURRENCY)
             adults = int(pref.get("adults", 1))
             cabin = pref.get("cabin_class", "economy")
@@ -550,7 +550,9 @@ def main():
             for origin in pref.get("origins", []):
                 for dest in pref.get("destinations", []):
                     for depart_date in dates:
-                        print(f"Searching {origin} → {dest}, max ${max_price:g}, date {depart_date}")
+                        print(
+                            f"Searching {origin} → {dest}, max ${max_price_per_traveler:g} per traveler, date {depart_date}"
+                        )
 
                         cache_key = (origin, dest, depart_date, adults, cabin, MAX_RESULTS_PER_SEARCH)
                         if cache_key in offer_cache:
@@ -584,7 +586,7 @@ def main():
                         for d in deals_all:
                             if d.currency and d.currency != currency:
                                 continue
-                            if d.price <= max_price:
+                            if (d.price / max(1, adults)) <= max_price_per_traveler:
                                 deals_matching.append(d)
 
                         if not deals_matching:
@@ -611,7 +613,7 @@ def main():
                     destination=dest,
                     grouped=grouped_dates,
                     currency=currency,
-                    max_price=max_price,
+                    max_price_per_traveler=max_price_per_traveler,
                     links_cache=links_cache,
                 )
 
