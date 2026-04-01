@@ -7,28 +7,117 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   </head>
   <body>
-    <main class="container">
-      <h1>Success</h1>
-      <p class="helper-text success-message">Your email is confirmed and your alerts are now active.</p>
-
-      <section class="success-card">
-        <div class="summary-row">
-          <span class="summary-label">Alert ID</span>
-          <span>{{ alert.alert_id }}</span>
+    <div class="page-shell">
+      <main class="container container-plain">
+        <div class="page-intro">
+          <p class="hero-brand">Jetzi</p>
+          <h1>You&rsquo;re all set</h1>
+          <p>
+            Jetzi is now watching your trip.<br />
+            We&rsquo;ll email you when a standout deal appears.
+          </p>
         </div>
+
+        <section class="success-card">
         <div class="summary-row">
           <span class="summary-label">Email</span>
           <span>{{ alert.email }}</span>
         </div>
         <div class="summary-row">
-          <span class="summary-label">Status</span>
+          <span class="summary-label">Alert status</span>
           <span>Active</span>
         </div>
-      </section>
+        <div class="summary-row">
+          <span class="summary-label">Watching</span>
+          <span>
+            {% if alert.last_deal_sent_at %}
+              Last deal sent {{ alert.last_deal_sent_at }}
+            {% else %}
+              Watching for deals
+            {% endif %}
+          </span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Destinations unlocked</span>
+          <span>{{ allowed_destinations }} total ({{ bonus_slots }} bonus)</span>
+        </div>
+        <div class="summary-row summary-row-meta">
+          <span class="summary-label">Alert ID</span>
+          <span>{{ alert.alert_id }}</span>
+        </div>
+        </section>
 
-      <div class="page-actions">
-        <a class="button-link" href="{{ url_for('index', fresh=1) }}">Create a new alert</a>
-      </div>
-    </main>
+        {% if referral_code %}
+        <section class="success-card email-capture-card secondary-card">
+        <h2>Track more destinations</h2>
+        <p class="helper-text">Invite a friend and unlock one more destination when they create their first alert.</p>
+        <p class="invite-row">
+          <a
+            id="referral-link"
+            class="referral-link"
+            href="{{ url_for('referral_landing', code=referral_code) }}"
+            data-copy-url="{{ referral_copy_url }}"
+            >{{ referral_copy_url }}</a
+          >
+          <button
+            id="copy-referral-link"
+            class="icon-btn"
+            type="button"
+            aria-label="Copy invite link"
+            title="Copy invite link"
+          >
+            <svg class="ui-icon ui-icon--purple ui-icon--sm icon-copy copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+              <path d="M5 15H4A2 2 0 0 1 2 13V4A2 2 0 0 1 4 2H13A2 2 0 0 1 15 4V5"></path>
+            </svg>
+            <svg class="ui-icon ui-icon--muted ui-icon--sm icon-check check-icon hidden" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 6L9 17L4 12"></path>
+            </svg>
+          </button>
+        </p>
+        </section>
+        {% endif %}
+
+        <div class="page-actions">
+          <a class="button-link" href="{{ url_for('index', fresh=1) }}">Track another trip</a>
+        </div>
+      </main>
+      {% if referral_code %}
+      <script>
+        (function () {
+          const copyButton = document.getElementById("copy-referral-link");
+          const link = document.getElementById("referral-link");
+          const copyIcon = copyButton?.querySelector(".copy-icon");
+          const checkIcon = copyButton?.querySelector(".check-icon");
+          if (!copyButton || !link || !copyIcon || !checkIcon) return;
+
+          copyButton.addEventListener("click", async () => {
+            if (copyButton.disabled) return;
+            const url = link.dataset.copyUrl || link.getAttribute("href");
+            if (!url) return;
+
+            try {
+              await navigator.clipboard.writeText(url);
+              copyButton.disabled = true;
+              copyButton.setAttribute("aria-disabled", "true");
+              copyIcon.classList.add("hidden");
+              checkIcon.classList.remove("hidden");
+              copyButton.classList.add("is-copied");
+              window.setTimeout(() => {
+                copyButton.disabled = false;
+                copyButton.setAttribute("aria-disabled", "false");
+                copyIcon.classList.remove("hidden");
+                checkIcon.classList.add("hidden");
+                copyButton.classList.remove("is-copied");
+              }, 1800);
+            } catch (error) {
+              copyButton.disabled = false;
+              copyButton.setAttribute("aria-disabled", "false");
+            }
+          });
+        })();
+      </script>
+      {% endif %}
+    </div>
   </body>
 </html>

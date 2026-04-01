@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
+from urllib.parse import quote
 
 import requests
 from dotenv import load_dotenv
@@ -14,13 +15,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DUFFEL_TOKEN = (os.getenv("DUFFEL_TOKEN") or os.getenv("DUFFEL_ACCESS_TOKEN") or "").strip()
+DUFFEL_TOKEN = (os.getenv("DUFFEL_API_KEY") or "").strip()
 DUFFEL_BASE_URL = os.getenv("DUFFEL_BASE_URL", "https://api.duffel.com").strip().rstrip("/")
 DUFFEL_VERSION = os.getenv("DUFFEL_VERSION", "v2").strip()
 DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "USD").strip()
 MAX_RESULTS_PER_SEARCH = int(os.getenv("MAX_RESULTS_PER_SEARCH", "10").strip())
 MIN_DAYS_FROM_TODAY = int(os.getenv("MIN_DAYS_FROM_TODAY", "7").strip())
-DEFAULT_DAYS_AHEAD = int(os.getenv("SEARCH_DAYS_AHEAD", "14").strip())
+DEFAULT_DAYS_AHEAD = int(os.getenv("SEARCH_DAYS_AHEAD", "7").strip())
 DEFAULT_MAX_DATES = int(os.getenv("MAX_DATES_TO_CHECK", "3").strip())
 
 
@@ -76,6 +77,24 @@ def _candidate_dates(
     return out
 
 
+def _build_google_flights_url(
+    *,
+    origin: str,
+    destination: str,
+    departure_date: str,
+    return_date: str = "",
+) -> str:
+    if not origin or not destination or not departure_date:
+        return ""
+
+    if return_date:
+        query = f"Flights from {origin} to {destination} on {departure_date} through {return_date}"
+    else:
+        query = f"Flights from {origin} to {destination} on {departure_date}"
+
+    return f"https://www.google.com/travel/flights?q={quote(query)}"
+
+
 def _post_offer_request(
     *,
     slices: List[Dict[str, str]],
@@ -95,7 +114,7 @@ def _post_offer_request(
         }
     }
 
-    response = requests.post(url, headers=_headers(), data=json.dumps(payload), timeout=30)
+    response = requests.post(url, headers=_headers(), data=json.dumps(payload), timeout=(10, 15))
     if response.status_code >= 400:
         raise RuntimeError(f"Duffel offer_request error {response.status_code}: {response.text}")
 
@@ -128,6 +147,20 @@ def _offer_to_deal(offer: Dict[str, Any], adults: int) -> Dict[str, Any] | None:
     origin = (first_slice.get("origin") or {}).get("iata_code", "")
     destination = (first_slice.get("destination") or {}).get("iata_code", "")
 
+    departure_date = departing_at[:10] if departing_at else ""
+    return_date = ""
+    if len(slices) > 1:
+        second_slice = slices[1] or {}
+        return_departing_at = str(second_slice.get("departing_at", "") or "")
+        return_date = return_departing_at[:10] if return_departing_at else ""
+
+    booking_url = _build_google_flights_url(
+        origin=origin,
+        destination=destination,
+        departure_date=departure_date,
+        return_date=return_date,
+    )
+
     return {
         "offer_id": offer.get("id", ""),
         "origin": origin,
@@ -140,6 +173,7 @@ def _offer_to_deal(offer: Dict[str, Any], adults: int) -> Dict[str, Any] | None:
         "total_price": total_price,
         "price_per_traveler": total_price / max(1, adults),
         "currency": total_currency,
+        "booking_url": booking_url,
     }
 
 

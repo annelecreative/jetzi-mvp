@@ -7,7 +7,7 @@ import json
 import secrets
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -17,6 +17,7 @@ from services.flights import VALID_WEEKDAYS, airport_brief
 BASE_DIR = Path(__file__).resolve().parent.parent
 ALERTS_PATH = BASE_DIR / "data" / "alerts.json"
 MAX_DESTINATIONS = 5
+BASE_PRICE_BUCKET_USD = 25
 
 ALERT_SCHEMA_KEYS = (
     "alert_id",
@@ -35,6 +36,9 @@ ALERT_SCHEMA_KEYS = (
     "only_send_matching_deals",
     "origin_airport",
     "destination_airports",
+    "last_deal_sent_at",
+    "last_deal_signature",
+    "last_no_deal_sent_at",
 )
 
 
@@ -113,6 +117,9 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
 
     normalized.setdefault("available_departure_days", [])
     normalized.setdefault("destination_airport_codes", [])
+    normalized.setdefault("last_deal_sent_at", None)
+    normalized.setdefault("last_deal_signature", None)
+    normalized.setdefault("last_no_deal_sent_at", None)
 
     return {key: normalized.get(key) for key in ALERT_SCHEMA_KEYS}
 
@@ -214,13 +221,18 @@ def build_alert_summary(alert: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, Dict[str, str]]) -> Tuple[Dict[str, Any] | None, str | None]:
+def validate_and_build_alert(
+    form: Dict[str, str],
+    airports_by_code: Dict[str, Dict[str, str]],
+    *,
+    max_destinations: int = MAX_DESTINATIONS,
+) -> Tuple[Dict[str, Any] | None, str | None]:
     origin_airport_code = form.get("origin_airport_code", "").strip().upper()
     destination_codes_raw = form.get("destination_airport_codes", "[]")
     trip_type = form.get("trip_type", "round_trip").strip()
     adults_raw = form.get("travelers", "").strip()
     max_price_raw = form.get("max_price_per_traveler", "").strip()
-    departure_days_raw = form.get("available_departure_days", "[]")
+    trip_days_raw = form.get("available_departure_days", "[]")
     min_days_raw = form.get("min_days", "").strip()
     frequency = form.get("frequency", "").strip().lower()
     only_send_matching_raw = form.get("only_send_matching_deals")
@@ -231,7 +243,7 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
         return None, "Invalid destination list format"
 
     try:
-        available_departure_days_raw = json.loads(departure_days_raw)
+        available_departure_days_raw = json.loads(trip_days_raw)
     except json.JSONDecodeError:
         return None, "Invalid available_departure_days format"
 
@@ -239,8 +251,8 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
         return None, "origin_airport_code is required"
     if not isinstance(destination_airport_codes, list) or len(destination_airport_codes) < 1:
         return None, "At least one destination airport is required"
-    if len(destination_airport_codes) > MAX_DESTINATIONS:
-        return None, "You can select up to 5 destinations"
+    if len(destination_airport_codes) > max_destinations:
+        return None, f"You can select up to {max_destinations} destinations"
 
     cleaned_destinations: List[str] = []
     for code in destination_airport_codes:
@@ -251,8 +263,8 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
 
     if len(cleaned_destinations) < 1:
         return None, "At least one destination airport is required"
-    if len(cleaned_destinations) > MAX_DESTINATIONS:
-        return None, "You can select up to 5 destinations"
+    if len(cleaned_destinations) > max_destinations:
+        return None, f"You can select up to {max_destinations} destinations"
 
     try:
         adults = int(adults_raw)
@@ -271,6 +283,8 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
     available_departure_days, days_type_valid = _normalize_departure_days(available_departure_days_raw)
     if not days_type_valid:
         return None, "available_departure_days must be a list"
+    if len(available_departure_days) < 1:
+        return None, "Select at least 1 day you can be on a trip."
 
     try:
         min_days = int(min_days_raw)
@@ -278,6 +292,12 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
         return None, "min_days must be an integer"
     if min_days < 1:
         return None, "min_days must be at least 1"
+    selected_day_count = len(available_departure_days)
+    if min_days > selected_day_count:
+        return (
+            None,
+            f"Minimum trip length can't be greater than your selected available departure days ({selected_day_count}).",
+        )
 
     if frequency not in {"immediately", "daily"}:
         return None, "frequency must be immediately or daily"
@@ -312,6 +332,9 @@ def validate_and_build_alert(form: Dict[str, str], airports_by_code: Dict[str, D
         "only_send_matching_deals": only_send_matching_deals,
         "origin_airport": airport_brief(origin_airport_code, airports_by_code),
         "destination_airports": [airport_brief(code, airports_by_code) for code in cleaned_destinations],
+        "last_deal_sent_at": None,
+        "last_deal_signature": None,
+        "last_no_deal_sent_at": None,
     }
     return {key: record[key] for key in ALERT_SCHEMA_KEYS}, None
 
@@ -320,7 +343,7 @@ def activate_alert_with_email(alert_id: str, email: str) -> Tuple[Dict[str, Any]
     if not is_valid_email(email):
         return None, "Enter a valid email address."
 
-    updated = update_alert_record(alert_id, {"email": email.strip(), "status": "active"})
+    updated = update_alert_record(alert_id, {"email": email.strip().lower(), "status": "active"})
     if updated is None:
         return None, "Alert not found."
     return updated, None
@@ -328,3 +351,38 @@ def activate_alert_with_email(alert_id: str, email: str) -> Tuple[Dict[str, Any]
 
 def list_active_alerts() -> List[Dict[str, Any]]:
     return [alert for alert in load_alert_records() if alert.get("status") == "active"]
+
+
+def _parse_iso(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def build_deal_signature(deal: Dict[str, Any], *, price_bucket_usd: int = BASE_PRICE_BUCKET_USD) -> str:
+    destination = str(deal.get("destination", "")).upper()
+    departure_date = str(deal.get("departing_at", ""))[:10]
+    try:
+        total_price = float(deal.get("total_price", 0) or 0)
+    except (TypeError, ValueError):
+        total_price = 0.0
+
+    bucket_size = max(1, price_bucket_usd)
+    price_bucket = int(total_price // bucket_size) * bucket_size
+    return f"{destination}|{departure_date}|{price_bucket}"
+
+
+def is_recent_duplicate(alert: Dict[str, Any], signature: str, *, within_hours: int) -> bool:
+    last_signature = str(alert.get("last_deal_signature") or "")
+    if not last_signature or last_signature != signature:
+        return False
+
+    last_sent = _parse_iso(str(alert.get("last_deal_sent_at") or ""))
+    if not last_sent:
+        return False
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, within_hours))
+    return last_sent >= cutoff

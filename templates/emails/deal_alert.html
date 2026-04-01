@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <body style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5">
+    <h2 style="margin-bottom: 8px">Deal found: {origin} -> {destination}</h2>
+    <p style="margin-top: 0">Departure: {depart_at}</p>
+
+    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; background: #f9fafb">
+      <p style="margin: 0"><strong>Normal price:</strong> {baseline_html}</p>
+      <p style="margin: 6px 0 0"><strong>Current price:</strong> {currency} {current_price:.2f}</p>
+      {percent_drop_html}
+    </div>
+
+    <p style="margin: 10px 0 0"><em>{confidence_line}</em></p>
+
+    <h3 style="margin-bottom: 6px">Why you're getting this alert</h3>
+    <ul style="margin-top: 0">{reasons_html}</ul>
+
+    <p style="font-size: 12px; color: #6b7280">{low_spam_footer}</p>
+    <p style="font-size: 12px; color: #6b7280">To stop these emails, <a href="{unsubscribe_url}">unsubscribe</a>.</p>
+  </body>
+</html>

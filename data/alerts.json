@@ -1,104 +1,53 @@
 [
   {
-    "alert_id": "a97e096e-b0c2-4036-a1ef-f12f2bd49c9b",
-    "created_at": "2026-02-14T02:25:29.975652Z",
-    "unsubscribe_token": "aMdfJgVjGcG2LLWvR_nl0BnDuxd_tm16py7-UJjAgMY",
-    "email": null,
-    "status": "pending_email",
-    "origin_airport_code": "SFO",
-    "destination_airport_codes": [
-      "LAX",
-      "LAS"
-    ],
-    "trip_type": "round_trip",
-    "adults": 1,
-    "max_price_per_traveler": 300.0,
-    "available_departure_days": [
-      "mon",
-      "tue",
-      "wed",
-      "thu"
-    ],
-    "min_days": 4,
-    "frequency": "daily",
-    "only_send_matching_deals": true,
-    "origin_airport": {
-      "code": "SFO",
-      "city": "San Francisco",
-      "name": "San Francisco International Airport",
-      "country": "United States"
-    },
-    "destination_airports": [
-      {
-        "code": "LAX",
-        "city": "Los Angeles",
-        "name": "Los Angeles International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "LAS",
-        "city": "Las Vegas",
-        "name": "Harry Reid International Airport",
-        "country": "United States"
-      }
-    ]
-  },
-  {
-    "alert_id": "9afb3016-263c-4840-988d-7bc310b44439",
-    "created_at": "2026-02-14T02:26:04.455324Z",
-    "unsubscribe_token": "tfu4YAfCgHTkkSDRB6CPuiLul0HQJB_1U0DpBpnvA7o",
-    "email": null,
-    "status": "pending_email",
-    "origin_airport_code": "SFO",
-    "destination_airport_codes": [
-      "LAX",
-      "LAS"
-    ],
-    "trip_type": "round_trip",
-    "adults": 1,
-    "max_price_per_traveler": 300.0,
-    "available_departure_days": [
-      "mon",
-      "tue",
-      "wed",
-      "thu"
-    ],
-    "min_days": 4,
-    "frequency": "daily",
-    "only_send_matching_deals": true,
-    "origin_airport": {
-      "code": "SFO",
-      "city": "San Francisco",
-      "name": "San Francisco International Airport",
-      "country": "United States"
-    },
-    "destination_airports": [
-      {
-        "code": "LAX",
-        "city": "Los Angeles",
-        "name": "Los Angeles International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "LAS",
-        "city": "Las Vegas",
-        "name": "Harry Reid International Airport",
-        "country": "United States"
-      }
-    ]
-  },
-  {
-    "alert_id": "58b38791-3942-4c9c-8b10-a587cc92bf36",
-    "created_at": "2026-02-14T02:32:25.000533Z",
-    "unsubscribe_token": "u1TFqDEYvFX7fkXht0HMHwnHk8K57HvqTjCpptXXIe4",
+    "alert_id": "5d16b596-ede7-4554-90d8-05e1d14a790d",
+    "created_at": "2026-03-24T23:07:07.778256Z",
+    "unsubscribe_token": "zbmyvkIJzGWF4a0XZwdhWef975CLK-9agmOlktGx5K4",
     "email": "hoanganhle408@gmail.com",
+    "status": "active",
+    "origin_airport_code": "LAX",
+    "destination_airport_codes": [
+      "JFK"
+    ],
+    "trip_type": "round_trip",
+    "adults": 1,
+    "max_price_per_traveler": 400.0,
+    "available_departure_days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu"
+    ],
+    "min_days": 4,
+    "frequency": "immediately",
+    "only_send_matching_deals": true,
+    "origin_airport": {
+      "code": "LAX",
+      "city": "Los Angeles",
+      "name": "Los Angeles International Airport",
+      "country": "United States"
+    },
+    "destination_airports": [
+      {
+        "code": "JFK",
+        "city": "New York",
+        "name": "John F. Kennedy International Airport",
+        "country": "United States"
+      }
+    ],
+    "last_deal_sent_at": "2026-04-01T02:47:49.550885Z",
+    "last_deal_signature": "JFK||375",
+    "last_no_deal_sent_at": null
+  },
+  {
+    "alert_id": "f215d941-bde1-420f-8154-15eb662ef02c",
+    "created_at": "2026-03-14T00:12:29.950284Z",
+    "unsubscribe_token": "mVzbnKSXrt0Hj9lX6lDwc1OM_PrycCFjVhb4STJxugw",
+    "email": "annelecreative@gmail.com",
     "status": "active",
     "origin_airport_code": "SFO",
     "destination_airport_codes": [
-      "LAX",
-      "LAS",
-      "SAN",
-      "SNA"
+      "MIA"
     ],
     "trip_type": "round_trip",
     "adults": 2,
@@ -120,73 +69,14 @@
     },
     "destination_airports": [
       {
-        "code": "LAX",
-        "city": "Los Angeles",
-        "name": "Los Angeles International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "LAS",
-        "city": "Las Vegas",
-        "name": "Harry Reid International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "SAN",
-        "city": "San Diego",
-        "name": "San Diego International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "SNA",
-        "city": "Santa Ana",
-        "name": "John Wayne Airport",
+        "code": "MIA",
+        "city": "Miami",
+        "name": "Miami International Airport",
         "country": "United States"
       }
-    ]
-  },
-  {
-    "alert_id": "e911e562-487e-4f5c-8fb3-a959c83de207",
-    "created_at": "2026-02-14T03:36:41.842445Z",
-    "unsubscribe_token": "bJZCBpM6o14mTNhyiGhygb9oeOu_ZUZ5ibSno2LYpxk",
-    "email": "hoanganhle408@gmail.com",
-    "status": "active",
-    "origin_airport_code": "SFO",
-    "destination_airport_codes": [
-      "LAX",
-      "LAS"
     ],
-    "trip_type": "round_trip",
-    "adults": 2,
-    "max_price_per_traveler": 300.0,
-    "available_departure_days": [
-      "mon",
-      "tue",
-      "wed",
-      "thu"
-    ],
-    "min_days": 4,
-    "frequency": "immediately",
-    "only_send_matching_deals": true,
-    "origin_airport": {
-      "code": "SFO",
-      "city": "San Francisco",
-      "name": "San Francisco International Airport",
-      "country": "United States"
-    },
-    "destination_airports": [
-      {
-        "code": "LAX",
-        "city": "Los Angeles",
-        "name": "Los Angeles International Airport",
-        "country": "United States"
-      },
-      {
-        "code": "LAS",
-        "city": "Las Vegas",
-        "name": "Harry Reid International Airport",
-        "country": "United States"
-      }
-    ]
+    "last_deal_sent_at": null,
+    "last_deal_signature": null,
+    "last_no_deal_sent_at": null
   }
 ]

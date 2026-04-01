@@ -1,5 +1,9 @@
 (function () {
-  const MAX_DESTINATIONS = 5;
+  const form = document.getElementById("alert-form");
+  const maxDestinationsFromData = Number(form?.dataset.allowedDestinations || "");
+  const MAX_DESTINATIONS = Number.isFinite(maxDestinationsFromData) && maxDestinationsFromData > 0
+    ? maxDestinationsFromData
+    : Number(window.__DESTINATION_LIMIT__ || 3);
   const initialAlertData = window.__INITIAL_ALERT__ || null;
 
   const originAnchor = document.getElementById("origin-autocomplete-anchor");
@@ -17,7 +21,6 @@
   const destinationChips = document.getElementById("destination-chips");
   const clearDestinationsButton = document.getElementById("clear-destinations");
 
-  const form = document.getElementById("alert-form");
   const formError = document.getElementById("form-error");
   const submitButton = form.querySelector('button[type="submit"]');
   const ctaHint = document.getElementById("cta-hint");
@@ -51,7 +54,7 @@
     destinations: false,
     travelers: false,
     max_price_per_traveler: false,
-    available_departure_days: false,
+    trip_days: false,
     min_days: false,
     frequency: false,
   };
@@ -262,6 +265,8 @@
   }
 
   function syncMinDaysLimit() {
+    const selectedDayCount = availableDays.length;
+    minDaysInput.max = selectedDayCount > 0 ? String(selectedDayCount) : "";
     const parsed = parseIntegerInput(minDaysInput.value);
     if (parsed !== null && parsed < 1) {
       minDaysInput.value = "1";
@@ -315,6 +320,12 @@
       errors.min_days = "Enter a valid number of days.";
     } else if (minDays < 1) {
       errors.min_days = "Minimum days must be at least 1.";
+    } else if (availableDays.length > 0 && minDays > availableDays.length) {
+      errors.min_days = `Minimum trip length can't be greater than your selected available departure days (${availableDays.length}).`;
+    }
+
+    if (availableDays.length === 0) {
+      errors.trip_days = "Select at least 1 day you can be on a trip.";
     }
 
     if (!getSelectedFrequency()) {
@@ -350,7 +361,7 @@
     const showDestinations = submitAttempted || (touched.destinations && !isDestinationTyping);
     const showTravelers = submitAttempted || touched.travelers;
     const showMaxPrice = submitAttempted || touched.max_price_per_traveler;
-    const showAvailableDays = submitAttempted || touched.available_departure_days;
+    const showAvailableDays = submitAttempted || touched.trip_days;
     const showMinDays = submitAttempted || touched.min_days;
     const showFrequency = submitAttempted || touched.frequency;
 
@@ -360,7 +371,7 @@
     setFieldError(destinationError, destinationMessage, showDestinations || Boolean(destinationLimitMessage));
     setFieldError(travelersError, errors.travelers, showTravelers);
     setFieldError(maxPriceError, errors.max_price_per_traveler, showMaxPrice);
-    setFieldError(availableDaysError, errors.available_departure_days, showAvailableDays);
+    setFieldError(availableDaysError, errors.trip_days, showAvailableDays);
     setFieldError(minDaysError, errors.min_days, showMinDays);
     setFieldError(frequencyError, errors.frequency, showFrequency);
 
@@ -368,13 +379,14 @@
     setInvalidClass(destinationShell, showDestinations && Boolean(errors.destinations));
     setInvalidClass(travelersInput, showTravelers && Boolean(errors.travelers));
     setInvalidClass(maxPriceInput, showMaxPrice && Boolean(errors.max_price_per_traveler));
-    setInvalidClass(availableDaysField, showAvailableDays && Boolean(errors.available_departure_days));
+    setInvalidClass(availableDaysField, showAvailableDays && Boolean(errors.trip_days));
     setInvalidClass(minDaysInput, showMinDays && Boolean(errors.min_days));
     setInvalidClass(frequencyField, showFrequency && Boolean(errors.frequency));
 
     const isValid = Object.keys(errors).length === 0;
-    submitButton.disabled = !isValid;
-    ctaHint.classList.toggle("hidden", isValid);
+    if (ctaHint) {
+      ctaHint.classList.toggle("hidden", isValid);
+    }
 
     return { isValid, errors };
   }
@@ -536,7 +548,7 @@
     const items = await fetchAirportSuggestions(q);
     renderDropdown(destinationMenu, items, (airport) => {
       if (destinationSelections.length >= MAX_DESTINATIONS) {
-        destinationLimitMessage = "You can add up to 5 destinations.";
+        destinationLimitMessage = `You can add up to ${MAX_DESTINATIONS} destinations.`;
         destinationInput.value = "";
         closeDropdown(destinationMenu);
         updateSubmitState();
@@ -594,7 +606,7 @@
 
   availableDayButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      markTouched("available_departure_days");
+      markTouched("trip_days");
       markTouched("min_days");
       const day = button.dataset.day;
       if (availableDays.includes(day)) {
@@ -643,27 +655,17 @@
     }
   });
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  form.addEventListener("submit", (event) => {
     submitAttempted = true;
     formError.classList.add("hidden");
 
     const validation = renderValidationState();
     if (!validation.isValid) {
-      return;
-    }
-
-    const formData = new FormData(form);
-    const response = await fetch(form.action, { method: "POST", body: formData });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      formError.textContent = payload.error || "Failed to create alert.";
+      event.preventDefault();
+      formError.textContent = "Please fix the highlighted errors before creating your alert.";
       formError.classList.remove("hidden");
       return;
     }
-
-    window.location.assign(payload.redirect_url || "/alert-created");
   });
 
   applyInitialAlert(initialAlertData);

@@ -7,13 +7,44 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   </head>
   <body>
-    <main class="container">
-      <h1>Create Jetzi Alert</h1>
+    <div class="page-shell">
+      <main class="container container-plain">
+        <section class="hero page-intro" aria-label="Jetzi flight alerts">
+          <p class="hero-brand">Jetzi</p>
+          <h1>Know when to book.</h1>
+          <p>
+            Tell Jetzi the trip you have in mind.<br />
+            We&rsquo;ll watch for deals worth booking.
+          </p>
+        </section>
+        {% if referred_code %}
+        <p class="helper-text success-message">Referral applied. You can now create your alert.</p>
+        {% endif %}
 
-      <form id="alert-form" action="/alerts/create" method="post" novalidate>
-        <p id="form-error" class="error error-banner hidden"></p>
+        <form
+          id="alert-form"
+          class="success-card"
+          action="/alerts/create"
+          method="post"
+          data-allowed-destinations="{{ allowed_destinations }}"
+          novalidate
+        >
+        <div class="section-title-row section-title-row-single">
+          <h2>
+            <svg class="ui-icon ui-icon--purple section-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 22S19 16.5 19 11A7 7 0 1 0 5 11C5 16.5 12 22 12 22Z"></path>
+              <circle cx="12" cy="11" r="3"></circle>
+            </svg>
+            Tell Jetzi your trip
+          </h2>
+        </div>
+        <p id="form-error" class="error error-banner{% if not server_error %} hidden{% endif %}">
+          {{ server_error or "" }}
+        </p>
+        <section class="form-section" aria-labelledby="trip-section-title">
+          <h3 id="trip-section-title" class="form-section-title">Your trip</h3>
         <div class="field">
-          <label for="origin-input">Departure</label>
+          <label for="origin-input">Where are you flying from?</label>
           <div id="origin-autocomplete-anchor" class="autocomplete-anchor">
             <div id="origin-input-shell" class="chips-input" tabindex="0">
               <div id="origin-chip" class="chips"></div>
@@ -22,7 +53,7 @@
                 name="origin_text"
                 type="text"
                 autocomplete="off"
-                placeholder="Search departure airport"
+                placeholder="Search departures"
               />
             </div>
             <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
@@ -32,7 +63,7 @@
         </div>
 
         <div class="field">
-          <label for="destination-input">Destinations</label>
+          <label for="destination-input">Where would you like to go?</label>
           <div id="destination-autocomplete-anchor" class="autocomplete-anchor">
             <div id="destination-input-shell" class="chips-input" tabindex="0">
               <div id="destination-chips" class="chips"></div>
@@ -41,7 +72,7 @@
                 name="destination_text"
                 type="text"
                 autocomplete="off"
-                placeholder="Search and select destinations"
+                placeholder="Search destinations"
               />
             </div>
             <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
@@ -49,8 +80,8 @@
 
           <div class="field-meta">
             <div>
-              <p class="helper-text">Up to 5 destinations</p>
-              <p class="helper-tip">(You can create more alerts later for other trips)</p>
+              <p class="helper-text">Track up to 3 destinations.</p>
+              <p class="helper-tip">You can add more later.</p>
             </div>
             <button id="clear-destinations" class="link-button hidden" type="button">Clear all</button>
           </div>
@@ -73,20 +104,27 @@
         </div>
 
         <div class="field">
-          <label for="travelers-input">Number of adult travelers</label>
+          <label for="travelers-input">How many adults are traveling?</label>
           <input id="travelers-input" name="travelers" type="number" min="1" max="4" value="1" required />
           <p class="helper-text">Up to 4 adults</p>
           <p id="travelers-error" class="field-error hidden"></p>
         </div>
+        </section>
 
+        <section class="form-section" aria-labelledby="budget-section-title">
+          <h3 id="budget-section-title" class="form-section-title">Your budget</h3>
         <div class="field">
-          <label for="max-price-input">Maximum price per traveler</label>
+          <label for="max-price-input">What price would make this a great deal?</label>
           <input id="max-price-input" name="max_price_per_traveler" type="number" min="1" value="1" required />
+          <p class="helper-text helper-text-tight">(per traveler)</p>
           <p id="max-price-error" class="field-error hidden"></p>
         </div>
+        </section>
 
+        <section class="form-section" aria-labelledby="flexibility-section-title">
+          <h3 id="flexibility-section-title" class="form-section-title">Your flexibility</h3>
         <div class="field">
-          <label>Available departure days</label>
+          <label>Which days can you travel?</label>
           <div id="available-days" class="day-buttons">
             <button type="button" class="day-button" data-day="mon">Mon</button>
             <button type="button" class="day-button" data-day="tue">Tue</button>
@@ -101,13 +139,16 @@
         </div>
 
         <div class="field">
-          <label for="min-days-input">Minimum number of days to travel</label>
+          <label for="min-days-input">What is the shortest trip you&rsquo;d take?</label>
           <input id="min-days-input" name="min_days" type="number" min="1" value="1" required />
           <p id="min-days-error" class="field-error hidden"></p>
         </div>
+        </section>
 
+        <section class="form-section form-section-last" aria-labelledby="alerts-section-title">
+          <h3 id="alerts-section-title" class="form-section-title">Your alerts</h3>
         <div id="frequency-field" class="field">
-          <label>Notification frequency</label>
+          <label>How would you like alerts?</label>
           <div class="inline-options">
             <label class="inline-option">
               <input type="radio" name="frequency" value="immediately" checked />
@@ -127,14 +168,17 @@
             <span>Only send matching deals</span>
           </label>
         </div>
+        </section>
 
-        <p id="cta-hint" class="cta-hint hidden">Complete the required fields to create your alert.</p>
-        <button type="submit">Create Alert</button>
-      </form>
-    </main>
+        <p id="cta-hint" class="cta-hint hidden"></p>
+        <button type="submit">Start watching for deals</button>
+        </form>
+      </main>
+    </div>
 
     <script>
-      window.__INITIAL_ALERT__ = {{ initial_alert | tojson }};
+      window.__INITIAL_ALERT__ = {{ (initial_alert or {}) | tojson }};
+      window.__DESTINATION_LIMIT__ = {{ allowed_destinations | tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
