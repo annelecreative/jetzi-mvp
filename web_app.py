@@ -313,6 +313,7 @@ def confirm_alert_email():
     updated, error = alert_service.activate_alert_with_email(
         alert.get("alert_id", ""), normalized_email
     )
+    
     if error:
         return (
             render_template(
@@ -326,6 +327,23 @@ def confirm_alert_email():
             ),
             400,
         )
+
+    from services import email as email_service
+
+    subject, text_body, html_body = email_service.compose_alert_email(
+    to_email=normalized_email,
+    subject="Your Jetzi alert is live ✈️",
+    intro="Jetzi is now watching your trip.",
+    lines=[
+        f"Route: {alert.get('origin_airport_code')} → {', '.join(alert.get('destination_airport_codes', []))}",
+        f"Budget: ${int(alert.get('max_price_per_traveler', 0))} per traveler",
+        "We’ll email you when a deal worth booking appears.",
+        "Most alerts don’t trigger every day — we only send the good ones."
+    ],
+    unsubscribe_token=updated.get("unsubscribe_token"),
+    )
+
+    email_service.send_email_resend([normalized_email], subject, text_body, html_body)
 
     session[ALERT_SESSION_KEY] = updated
     session[USER_EMAIL_SESSION_KEY] = normalized_email
