@@ -28096,5 +28096,149 @@
     "depart_window": "mon,thu,tue,wed",
     "return_window": "min_days:4",
     "price": 434.98
+  },
+  {
+    "observed_at": "2026-04-01T23:37:04.958643Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 395.98
+  },
+  {
+    "observed_at": "2026-04-01T23:37:04.958659Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 421.98
+  },
+  {
+    "observed_at": "2026-04-01T23:37:04.958666Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 493.98
+  },
+  {
+    "observed_at": "2026-04-01T23:37:04.958672Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 519.98
+  },
+  {
+    "observed_at": "2026-04-01T23:37:04.958676Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 439.98
+  },
+  {
+    "observed_at": "2026-04-02T01:24:56.423494Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 434.98
+  },
+  {
+    "observed_at": "2026-04-02T01:24:56.423510Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 460.99
+  },
+  {
+    "observed_at": "2026-04-02T01:24:56.423518Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 494.98
+  },
+  {
+    "observed_at": "2026-04-02T01:34:21.870895Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 434.98
+  },
+  {
+    "observed_at": "2026-04-02T01:34:21.870912Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 460.99
+  },
+  {
+    "observed_at": "2026-04-02T01:34:21.870920Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 494.98
+  },
+  {
+    "observed_at": "2026-04-02T01:41:16.147092Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 434.98
+  },
+  {
+    "observed_at": "2026-04-02T01:41:16.147108Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 460.99
+  },
+  {
+    "observed_at": "2026-04-02T01:41:16.147115Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 494.98
+  },
+  {
+    "observed_at": "2026-04-03T02:55:04.457818Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 379.98
+  },
+  {
+    "observed_at": "2026-04-03T02:55:04.457845Z",
+    "origin_airport_code": "LAX",
+    "destination_airport_code": "JFK",
+    "trip_type": "round_trip",
+    "depart_window": "mon,thu,tue,wed",
+    "return_window": "min_days:4",
+    "price": 439.98
   }
 ]

@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DUFFEL_TOKEN = (os.getenv("DUFFEL_API_KEY") or "").strip()
+DUFFEL_TOKEN = (os.getenv("DUFFEL_API_KEY") or os.getenv("DUFFEL_TOKEN") or "").strip()
 DUFFEL_BASE_URL = os.getenv("DUFFEL_BASE_URL", "https://api.duffel.com").strip().rstrip("/")
 DUFFEL_VERSION = os.getenv("DUFFEL_VERSION", "v2").strip()
 DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "USD").strip()

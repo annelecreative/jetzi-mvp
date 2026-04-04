@@ -14,6 +14,13 @@ from services import price_observations
 from services import runtime_config
 
 
+# New MVP quality gates:
+# - Must be below user budget
+# - Must be meaningfully below recent baseline if baseline exists
+MIN_PERCENT_DROP_TO_SEND = 10
+MIN_SCORE_TO_SEND = 8
+
+
 def _parse_iso(value: str) -> datetime | None:
     if not value:
         return None
@@ -38,11 +45,8 @@ def _deal_reasons(
     current_total = float(deal.get("total_price", 0) or 0)
     per_traveler = current_total / max(1, adults)
 
-    if max_price > 0:
-        if per_traveler <= max_price:
-            reasons.append(f"Within your target price of ${max_price:.0f} per traveler")
-        elif per_traveler <= max_price * 1.3:
-            reasons.append(f"Close to your target price of ${max_price:.0f} per traveler")
+    if max_price > 0 and per_traveler <= max_price:
+        reasons.append(f"Within your target price of ${max_price:.0f} per traveler")
 
     if baseline_price is not None and current_total < baseline_price:
         diff = baseline_price - current_total
@@ -64,8 +68,11 @@ def _confidence_line(*, baseline_price: float | None, current_price: float) -> s
     if baseline_price is None:
         return "This matches your alert settings and is worth a look."
 
-    if current_price <= baseline_price * 0.85:
+    if current_price <= baseline_price * 0.7:
         return "This looks unusually good compared with recent prices."
+
+    if current_price <= baseline_price * 0.85:
+        return "This looks clearly better than what we've seen recently."
 
     if current_price < baseline_price:
         return "This is lower than what we've seen recently."
@@ -88,26 +95,27 @@ def _deal_score(
     total_price = float(deal.get("total_price", 0) or 0)
     per_traveler = total_price / max(1, adults)
 
+    # Personal relevance
     if max_price > 0:
         if per_traveler <= max_price:
             score += 5
-        elif per_traveler <= max_price * 1.15:
-            score += 2
+        elif per_traveler <= max_price * 1.1:
+            score += 1
 
+    # Market relevance
     if baseline_price is not None and total_price < baseline_price:
         score += 3
 
     if percent_drop is not None:
-        if percent_drop >= significant_drop_pct:
-            score += 4
-        elif percent_drop >= max(5, significant_drop_pct // 2):
+        if percent_drop >= max(significant_drop_pct, 30):
+            score += 5
+        elif percent_drop >= max(10, significant_drop_pct // 2):
             score += 2
 
+    # Cheap absolute fares still deserve a small boost
     if total_price <= 250:
-        score += 3
-    elif total_price <= 400:
         score += 2
-    elif total_price <= 600:
+    elif total_price <= 400:
         score += 1
 
     return score
@@ -151,6 +159,34 @@ def _pick_best_deal(
     return best_deal, baseline_price, percent_drop, best_score
 
 
+def _passes_send_gate(
+    *,
+    alert: dict,
+    deal: dict,
+    baseline_price: float | None,
+    percent_drop: int | None,
+    score: int,
+) -> tuple[bool, str]:
+    adults = int(alert.get("adults", 1) or 1)
+    max_price = float(alert.get("max_price_per_traveler", 0) or 0)
+    total_price = float(deal.get("total_price", 0) or 0)
+    per_traveler = total_price / max(1, adults)
+
+    if max_price > 0 and per_traveler > max_price:
+        return False, f"over user budget (${per_traveler:.0f} > ${max_price:.0f})"
+
+    if baseline_price is not None:
+        if percent_drop is None:
+            return False, "missing percent drop"
+        if percent_drop < MIN_PERCENT_DROP_TO_SEND:
+            return False, f"drop too small ({percent_drop}% < {MIN_PERCENT_DROP_TO_SEND}%)"
+
+    if score < MIN_SCORE_TO_SEND:
+        return False, f"score too low ({score} < {MIN_SCORE_TO_SEND})"
+
+    return True, "passed"
+
+
 def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
     if not duffel_service.DUFFEL_TOKEN:
         raise RuntimeError("DUFFEL_TOKEN is required for --mode deals")
@@ -170,6 +206,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
 
     sent = 0
     skipped_duplicate = 0
+    skipped_quality_gate = 0
     matched_alerts = 0
     no_match_alerts = 0
     search_error_alerts = 0
@@ -208,15 +245,36 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
             significant_drop_pct=significant_drop_pct,
         )
 
-        if best_deal:
-            print("DEBUG DEAL:", best_deal)
+        current_price = float(best_deal.get("total_price", 0) or 0)
+
+        print("DEBUG DEAL:", best_deal)
+        print(
+            "DEBUG SCORE:",
+            {
+                "score": best_score,
+                "baseline_price": baseline_price,
+                "current_price": current_price,
+                "percent_drop": percent_drop,
+            },
+        )
+
+        passed_gate, gate_reason = _passes_send_gate(
+            alert=alert,
+            deal=best_deal,
+            baseline_price=baseline_price,
+            percent_drop=percent_drop,
+            score=best_score,
+        )
+        if not passed_gate:
+            print(f"Skipping send: {gate_reason}")
+            skipped_quality_gate += 1
+            continue
 
         signature = alert_service.build_deal_signature(best_deal)
         if alert_service.is_recent_duplicate(alert, signature, within_hours=dedupe_hours):
+            print("Skipping duplicate deal")
             skipped_duplicate += 1
             continue
-
-        current_price = float(best_deal.get("total_price", 0) or 0)
 
         reasons = _deal_reasons(
             alert=alert,
@@ -268,6 +326,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
         "search_error_alerts": search_error_alerts,
         "sent": sent,
         "skipped_duplicate": skipped_duplicate,
+        "skipped_quality_gate": skipped_quality_gate,
     }
 
 
