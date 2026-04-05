@@ -349,6 +349,15 @@ def confirm_alert_email():
     session[USER_EMAIL_SESSION_KEY] = normalized_email
     return redirect(url_for("alerts_activated"))
 
+@app.get("/internal/run-alerts")
+def run_alerts_internal():
+    from run_alerts import main as run_alerts_main
+
+    try:
+        run_alerts_main()
+        return "Alerts run successfully", 200
+    except Exception as e:
+        return f"Error running alerts: {str(e)}", 500
 
 if __name__ == "__main__":
     app.run(debug=True)
