@@ -361,7 +361,7 @@ def run_alerts_internal():
     from run_alerts import main as run_alerts_main
 
     try:
-        run_alerts_main()
+        run_alerts_main(["--mode", "deals"])
         return "Alerts run successfully", 200
     except Exception as e:
         import traceback
