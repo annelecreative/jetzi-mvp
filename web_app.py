@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+import os
+from flask import request
+
 import os
 from urllib.parse import urlsplit
 
@@ -351,13 +355,17 @@ def confirm_alert_email():
 
 @app.get("/internal/run-alerts")
 def run_alerts_internal():
+    if request.args.get("key") != os.getenv("INTERNAL_API_KEY"):
+        return "Unauthorized", 403
+
     from run_alerts import main as run_alerts_main
 
     try:
         run_alerts_main()
         return "Alerts run successfully", 200
     except Exception as e:
-        return f"Error running alerts: {str(e)}", 500
+        import traceback
+        return f"<pre>{traceback.format_exc()}</pre>", 500
 
 if __name__ == "__main__":
     app.run(debug=True)
