@@ -20,6 +20,11 @@ from services import runtime_config
 MIN_PERCENT_DROP_TO_SEND = 10
 MIN_SCORE_TO_SEND = 8
 
+# New anti-spam repeat-send gate:
+# - Never send repeated deal emails within 24h unless meaningfully better
+MIN_REPEAT_IMPROVEMENT_USD = 50
+MIN_REPEAT_IMPROVEMENT_PCT = 10
+
 
 def _parse_iso(value: str) -> datetime | None:
     if not value:
@@ -207,12 +212,13 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
     sent = 0
     skipped_duplicate = 0
     skipped_quality_gate = 0
+    skipped_repeat_window = 0
     matched_alerts = 0
     no_match_alerts = 0
     search_error_alerts = 0
 
     for alert in alerts:
-        if not alert.get("is_active", True):
+        if not alert.get("is_active", True) and alert.get("status") != "active":
             continue
 
         if not alert.get("email"):
@@ -270,6 +276,18 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
             skipped_quality_gate += 1
             continue
 
+        suppress_repeat, repeat_reason = alert_service.should_suppress_repeat_send(
+            alert,
+            new_total_price=current_price,
+            within_hours=dedupe_hours,
+            min_absolute_improvement_usd=MIN_REPEAT_IMPROVEMENT_USD,
+            min_percent_improvement=MIN_REPEAT_IMPROVEMENT_PCT,
+        )
+        if suppress_repeat:
+            print(f"Skipping repeat send: {repeat_reason}")
+            skipped_repeat_window += 1
+            continue
+
         signature = alert_service.build_deal_signature(best_deal)
         if alert_service.is_recent_duplicate(alert, signature, within_hours=dedupe_hours):
             print("Skipping duplicate deal")
@@ -315,6 +333,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
                 {
                     "last_deal_sent_at": now_iso,
                     "last_deal_signature": signature,
+                    "last_deal_total_price": round(current_price, 2),
                 },
             )
             sent += 1
@@ -327,6 +346,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
         "sent": sent,
         "skipped_duplicate": skipped_duplicate,
         "skipped_quality_gate": skipped_quality_gate,
+        "skipped_repeat_window": skipped_repeat_window,
     }
 
 
@@ -345,7 +365,7 @@ def run_no_deal_checkins(limit: int | None = None) -> dict:
     cutoff = datetime.now(timezone.utc) - timedelta(days=checkin_days)
 
     for alert in alerts:
-        if not alert.get("is_active", True):
+        if not alert.get("is_active", True) and alert.get("status") != "active":
             continue
 
         if not alert.get("email"):

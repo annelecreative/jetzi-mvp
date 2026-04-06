@@ -38,6 +38,7 @@ ALERT_SCHEMA_KEYS = (
     "destination_airports",
     "last_deal_sent_at",
     "last_deal_signature",
+    "last_deal_total_price",
     "last_no_deal_sent_at",
 )
 
@@ -99,6 +100,18 @@ def _normalize_departure_days(raw_days: Any) -> Tuple[List[str], bool]:
     return cleaned_days, True
 
 
+def _normalize_price(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError):
+        return None
+    if normalized < 0:
+        return None
+    return round(normalized, 2)
+
+
 def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(alert)
     normalized.setdefault("alert_id", str(uuid.uuid4()))
@@ -119,6 +132,7 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     normalized.setdefault("destination_airport_codes", [])
     normalized.setdefault("last_deal_sent_at", None)
     normalized.setdefault("last_deal_signature", None)
+    normalized["last_deal_total_price"] = _normalize_price(normalized.get("last_deal_total_price"))
     normalized.setdefault("last_no_deal_sent_at", None)
 
     return {key: normalized.get(key) for key in ALERT_SCHEMA_KEYS}
@@ -334,6 +348,7 @@ def validate_and_build_alert(
         "destination_airports": [airport_brief(code, airports_by_code) for code in cleaned_destinations],
         "last_deal_sent_at": None,
         "last_deal_signature": None,
+        "last_deal_total_price": None,
         "last_no_deal_sent_at": None,
     }
     return {key: record[key] for key in ALERT_SCHEMA_KEYS}, None
@@ -386,3 +401,53 @@ def is_recent_duplicate(alert: Dict[str, Any], signature: str, *, within_hours: 
 
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, within_hours))
     return last_sent >= cutoff
+
+
+def should_suppress_repeat_send(
+    alert: Dict[str, Any],
+    *,
+    new_total_price: float,
+    within_hours: int,
+    min_absolute_improvement_usd: float = 50.0,
+    min_percent_improvement: int = 10,
+) -> tuple[bool, str]:
+    """
+    Suppress repeat sends for the same alert unless the new deal is meaningfully better.
+
+    Rules:
+    - If no prior deal was sent recently: allow.
+    - If a prior deal was sent within `within_hours`:
+      - suppress if the new price is not lower
+      - suppress unless it is at least $50 lower OR 10% lower than last sent
+    """
+    last_sent = _parse_iso(str(alert.get("last_deal_sent_at") or ""))
+    if not last_sent:
+        return False, "no prior sent deal"
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, within_hours))
+    if last_sent < cutoff:
+        return False, "outside repeat-send window"
+
+    last_total_price = _normalize_price(alert.get("last_deal_total_price"))
+    if last_total_price is None:
+        return True, "recent deal already sent and missing last sent price"
+
+    new_total_price = round(float(new_total_price), 2)
+    if new_total_price >= last_total_price:
+        return True, f"recent deal already sent at ${last_total_price:.0f}; new deal is not better"
+
+    absolute_improvement = last_total_price - new_total_price
+    percent_improvement = 0
+    if last_total_price > 0:
+        percent_improvement = round((absolute_improvement / last_total_price) * 100)
+
+    if (
+        absolute_improvement < float(min_absolute_improvement_usd)
+        and percent_improvement < int(min_percent_improvement)
+    ):
+        return (
+            True,
+            f"recent deal already sent; improvement too small (${absolute_improvement:.0f}, {percent_improvement}%)",
+        )
+
+    return False, f"meaningfully better deal (${absolute_improvement:.0f}, {percent_improvement}%)"
