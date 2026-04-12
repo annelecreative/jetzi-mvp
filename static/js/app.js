@@ -1,9 +1,10 @@
 (function () {
   const form = document.getElementById("alert-form");
   const maxDestinationsFromData = Number(form?.dataset.allowedDestinations || "");
-  const MAX_DESTINATIONS = Number.isFinite(maxDestinationsFromData) && maxDestinationsFromData > 0
-    ? maxDestinationsFromData
-    : Number(window.__DESTINATION_LIMIT__ || 3);
+  const MAX_DESTINATIONS =
+    Number.isFinite(maxDestinationsFromData) && maxDestinationsFromData > 0
+      ? maxDestinationsFromData
+      : Number(window.__DESTINATION_LIMIT__ || 3);
   const initialAlertData = window.__INITIAL_ALERT__ || null;
 
   const originAnchor = document.getElementById("origin-autocomplete-anchor");
@@ -36,6 +37,12 @@
   const onlyMatchingField = document.getElementById("only-matching-field");
   const onlyMatchingInput = document.getElementById("only-matching-input");
 
+  const budgetContext = document.getElementById("budget-context");
+  const budgetGuideTitle = document.getElementById("budget-guide-title");
+  const budgetGuideCopy = document.getElementById("budget-guide-copy");
+  const budgetSuggestionButton = document.getElementById("budget-suggestion-button");
+  const lowPriceWarning = document.getElementById("low-price-warning");
+
   const originError = document.getElementById("origin-error");
   const destinationError = document.getElementById("destination-error");
   const travelersError = document.getElementById("travelers-error");
@@ -49,6 +56,8 @@
   let availableDays = [];
   let destinationLimitMessage = "";
   let submitAttempted = false;
+  let currentBudgetSuggestion = null;
+
   const touched = {
     origin: false,
     destinations: false,
@@ -217,6 +226,8 @@
     originSelection = null;
     originCodeHidden.value = "";
     renderOriginChip();
+    updateBudgetGuidance();
+    updateLowPriceWarning();
   }
 
   function renderOriginChip() {
@@ -258,7 +269,6 @@
     onlyMatchingField.classList.toggle("hidden", !isDailyDigest);
     onlyMatchingInput.disabled = !isDailyDigest;
 
-    // For immediate notifications we always treat this as true on the backend.
     if (!isDailyDigest) {
       onlyMatchingInput.checked = true;
     }
@@ -288,6 +298,112 @@
     return value;
   }
 
+  function getBudgetGuidanceState() {
+    const destinationCount = destinationSelections.length;
+
+    if (!originSelection || destinationCount === 0) {
+      return {
+        title: "Not sure what to enter?",
+        copy:
+          "Start with a price that would make you feel good booking. You can always adjust it later.",
+        context: "",
+        suggestion: null,
+        buttonLabel: "",
+      };
+    }
+
+    const sameCountryDestinations = destinationSelections.filter(
+      (destination) => destination.country && originSelection.country && destination.country === originSelection.country
+    );
+    const allSameCountry =
+      destinationSelections.length > 0 && sameCountryDestinations.length === destinationSelections.length;
+    const hasMixedCountries =
+      destinationSelections.some(
+        (destination) =>
+          originSelection.country && destination.country && destination.country !== originSelection.country
+      );
+
+    if (destinationCount > 1 && hasMixedCountries) {
+      return {
+        title: "Not sure what to enter?",
+        copy:
+          "Use one broad starter target for now. Jetzi will apply it across all selected destinations, and you can fine-tune later.",
+        context: "If you track multiple destinations, this budget applies to all of them for now.",
+        suggestion: 400,
+        buttonLabel: "Use $400 starter target",
+      };
+    }
+
+    if (destinationCount > 1 && allSameCountry) {
+      return {
+        title: "Not sure what to enter?",
+        copy:
+          "Pick one price that would feel like a strong deal across all of your selected destinations.",
+        context: "If you track multiple destinations, this budget applies to all of them for now.",
+        suggestion: 225,
+        buttonLabel: "Use $225 starter target",
+      };
+    }
+
+    if (destinationCount === 1 && allSameCountry) {
+      return {
+        title: "Not sure what to enter?",
+        copy:
+          "For a shorter domestic-style trip, many people start with a target around $150–$250 per traveler to catch good deals consistently (lower targets can catch rare deals, but you may miss many good ones).",
+        context: "",
+        suggestion: 200,
+        buttonLabel: "Use $200 starter target",
+      };
+    }
+
+    return {
+      title: "Not sure what to enter?",
+      copy:
+        "For an international-style trip, many people start with a target around $350–$600 per traveler to catch good deals consistently (lower targets can catch rare deals, but you may miss many good ones).",
+      context: "",
+      suggestion: 450,
+      buttonLabel: "Use $450 starter target",
+    };
+  }
+
+  function updateBudgetGuidance() {
+    if (!budgetGuideTitle || !budgetGuideCopy || !budgetContext || !budgetSuggestionButton) {
+      return;
+    }
+
+    const state = getBudgetGuidanceState();
+    currentBudgetSuggestion = state.suggestion;
+
+    budgetGuideTitle.textContent = state.title;
+    budgetGuideCopy.textContent = state.copy;
+    budgetContext.textContent = state.context || "";
+    budgetContext.classList.toggle("hidden", !state.context);
+
+    if (typeof state.suggestion === "number" && state.suggestion > 0) {
+      budgetSuggestionButton.textContent = state.buttonLabel;
+      budgetSuggestionButton.classList.remove("hidden");
+    } else {
+      budgetSuggestionButton.textContent = "";
+      budgetSuggestionButton.classList.add("hidden");
+    }
+  }
+
+  function updateLowPriceWarning() {
+    if (!lowPriceWarning || !maxPriceInput) return;
+
+    const maxPrice = parsePositiveNumberInput(maxPriceInput.value);
+
+    if (maxPrice !== null && maxPrice > 0 && maxPrice < 50) {
+      lowPriceWarning.textContent =
+        "This price is very low for most trips. You may miss good deals if your target is too strict.";
+      lowPriceWarning.classList.remove("hidden");
+      return;
+    }
+
+    lowPriceWarning.textContent = "";
+    lowPriceWarning.classList.add("hidden");
+  }
+
   function getValidationErrors() {
     const errors = {};
 
@@ -310,7 +426,7 @@
 
     const maxPrice = parsePositiveNumberInput(maxPriceInput.value);
     if (maxPrice === null) {
-      errors.max_price_per_traveler = "Enter a valid price (e.g., 300).";
+      errors.max_price_per_traveler = "Enter a valid price (e.g. 300).";
     } else if (maxPrice <= 0) {
       errors.max_price_per_traveler = "Price must be at least 1.";
     }
@@ -319,13 +435,13 @@
     if (minDays === null) {
       errors.min_days = "Enter a valid number of days.";
     } else if (minDays < 1) {
-      errors.min_days = "Minimum days must be at least 1.";
+      errors.min_days = "Minimum trip length must be at least 1 day.";
     } else if (availableDays.length > 0 && minDays > availableDays.length) {
-      errors.min_days = `Minimum trip length can't be greater than your selected available departure days (${availableDays.length}).`;
+      errors.min_days = `Your minimum trip length can’t be greater than the number of days you selected as available (${availableDays.length}).`;
     }
 
     if (availableDays.length === 0) {
-      errors.trip_days = "Select at least 1 day you can be on a trip.";
+      errors.trip_days = "Select at least 1 day you can travel.";
     }
 
     if (!getSelectedFrequency()) {
@@ -393,6 +509,8 @@
 
   function updateSubmitState() {
     renderValidationState();
+    updateBudgetGuidance();
+    updateLowPriceWarning();
   }
 
   function renderDestinationChips() {
@@ -430,6 +548,7 @@
     });
 
     clearDestinationsButton.classList.toggle("hidden", destinationSelections.length === 0);
+    updateBudgetGuidance();
   }
 
   function setRadioValue(name, value) {
@@ -481,7 +600,7 @@
     if (typeof alert.adults !== "undefined") {
       travelersInput.value = String(alert.adults);
     }
-    if (typeof alert.max_price_per_traveler !== "undefined") {
+    if (typeof alert.max_price_per_traveler !== "undefined" && alert.max_price_per_traveler !== null) {
       maxPriceInput.value = String(alert.max_price_per_traveler);
     }
     if (Array.isArray(alert.available_departure_days)) {
@@ -501,6 +620,8 @@
       onlyMatchingInput.checked = Boolean(alert.only_send_matching_deals);
     }
     setOnlyMatchingVisibility();
+    updateBudgetGuidance();
+    updateLowPriceWarning();
   }
 
   function renderAvailableDays() {
@@ -576,6 +697,7 @@
     markTouched("origin");
     updateSubmitState();
   });
+
   destinationInput.addEventListener("input", debouncedDestinationSearch);
   destinationInput.addEventListener("keydown", (event) => handleAutocompleteKeydown(event, destinationMenu));
   destinationInput.addEventListener("input", () => {
@@ -624,12 +746,20 @@
 
   [travelersInput, maxPriceInput, minDaysInput].forEach((input) => {
     input.addEventListener("input", () => {
-      if (input === travelersInput) markTouched("travelers");
-      if (input === maxPriceInput) markTouched("max_price_per_traveler");
+      if (input === travelersInput) {
+        markTouched("travelers");
+      }
+
+      if (input === maxPriceInput) {
+        markTouched("max_price_per_traveler");
+        updateLowPriceWarning();
+      }
+
       if (input === minDaysInput) {
         markTouched("min_days");
         syncMinDaysLimit();
       }
+
       formError.classList.add("hidden");
       updateSubmitState();
     });
@@ -643,6 +773,18 @@
       updateSubmitState();
     });
   });
+
+  if (budgetSuggestionButton) {
+    budgetSuggestionButton.addEventListener("click", () => {
+      if (typeof currentBudgetSuggestion === "number" && currentBudgetSuggestion > 0) {
+        maxPriceInput.value = String(currentBudgetSuggestion);
+        markTouched("max_price_per_traveler");
+        formError.classList.add("hidden");
+        updateSubmitState();
+        maxPriceInput.focus();
+      }
+    });
+  }
 
   document.addEventListener("click", (event) => {
     const target = event.target;
@@ -666,6 +808,8 @@
       formError.classList.remove("hidden");
       return;
     }
+
+    submitButton.disabled = true;
   });
 
   applyInitialAlert(initialAlertData);
@@ -676,5 +820,7 @@
   setOnlyMatchingVisibility();
   renderDestinationChips();
   renderAvailableDays();
+  updateBudgetGuidance();
+  updateLowPriceWarning();
   renderValidationState();
 })();

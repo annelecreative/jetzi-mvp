@@ -313,6 +313,30 @@ input[type="checkbox"] {
   accent-color: var(--primary);
 }
 
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.input-with-prefix input {
+  padding-left: 28px; /* creates space for $ */
+}
+
+.field-warning {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #b45309; /* amber warning */
+}
+
 button[type="submit"] {
   border: 0;
   border-radius: var(--control-radius);
@@ -451,7 +475,7 @@ button[type="submit"]:disabled {
   margin-top: 0.5rem;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
 }
 
@@ -469,6 +493,7 @@ button[type="submit"]:disabled {
   margin: 0.4rem 0 0;
   color: #6b7280;
   font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .link-button {
@@ -644,8 +669,9 @@ input[type="email"].is-invalid,
 }
 
 .card-intro {
-  margin: 0 0 0.7rem;
+  margin: 0 0 0.9rem;
   color: #667085;
+  line-height: 1.4;
 }
 
 .secondary-card {
@@ -694,6 +720,54 @@ input[type="email"].is-invalid,
   color: var(--primary);
 }
 
+.budget-guide {
+  margin-top: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #ddd6fe;
+  background: #f7f5ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.budget-guide-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #312e81;
+}
+
+.budget-guide-copy {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  color: #4c1d95;
+  line-height: 1.5;
+}
+
+.budget-suggestion-button {
+  border: 1px solid #c4b5fd;
+  background: #fff;
+  color: var(--primary);
+  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.budget-suggestion-button:hover {
+  background: #f5f3ff;
+}
+
+.budget-suggestion-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
 @media (max-width: 640px) {
   .container {
     padding: 1rem;
@@ -710,6 +784,20 @@ input[type="email"].is-invalid,
   .hero-cta {
     width: 100%;
     min-width: 0;
+  }
+
+  .field-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .budget-guide {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .budget-suggestion-button {
+    width: 100%;
   }
 }
 

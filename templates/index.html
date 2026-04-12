@@ -17,6 +17,7 @@
             We&rsquo;ll watch for deals worth booking.
           </p>
         </section>
+
         {% if referred_code %}
         <p class="helper-text success-message">Referral applied. You can now create your alert.</p>
         {% endif %}
@@ -29,149 +30,182 @@
           data-allowed-destinations="{{ allowed_destinations }}"
           novalidate
         >
-        <div class="section-title-row section-title-row-single">
-          <h2>
-            <svg class="ui-icon ui-icon--purple section-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 22S19 16.5 19 11A7 7 0 1 0 5 11C5 16.5 12 22 12 22Z"></path>
-              <circle cx="12" cy="11" r="3"></circle>
-            </svg>
-            Tell Jetzi your trip
-          </h2>
-        </div>
-        <p id="form-error" class="error error-banner{% if not server_error %} hidden{% endif %}">
-          {{ server_error or "" }}
-        </p>
-        <section class="form-section" aria-labelledby="trip-section-title">
-          <h3 id="trip-section-title" class="form-section-title">Your trip</h3>
-        <div class="field">
-          <label for="origin-input">Where are you flying from?</label>
-          <div id="origin-autocomplete-anchor" class="autocomplete-anchor">
-            <div id="origin-input-shell" class="chips-input" tabindex="0">
-              <div id="origin-chip" class="chips"></div>
+          <div class="section-title-row section-title-row-single">
+            <h2>
+              <svg class="ui-icon ui-icon--purple section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 22S19 16.5 19 11A7 7 0 1 0 5 11C5 16.5 12 22 12 22Z"></path>
+                <circle cx="12" cy="11" r="3"></circle>
+              </svg>
+              Tell Jetzi your trip
+            </h2>
+          </div>
+
+
+          <p id="form-error" class="error error-banner{% if not server_error %} hidden{% endif %}">
+            {{ server_error or "" }}
+          </p>
+
+          <section class="form-section" aria-labelledby="trip-section-title">
+            <h3 id="trip-section-title" class="form-section-title">Your trip</h3>
+
+            <div class="field">
+              <label for="origin-input">Where are you flying from?</label>
+              <div id="origin-autocomplete-anchor" class="autocomplete-anchor">
+                <div id="origin-input-shell" class="chips-input" tabindex="0">
+                  <div id="origin-chip" class="chips"></div>
+                  <input
+                    id="origin-input"
+                    name="origin_text"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="Search departures"
+                  />
+                </div>
+                <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
+              </div>
+              <input id="origin-airport-code" name="origin_airport_code" type="hidden" />
+              <p id="origin-error" class="field-error hidden"></p>
+            </div>
+
+            <div class="field">
+              <label for="destination-input">Where would you like to go?</label>
+              <div id="destination-autocomplete-anchor" class="autocomplete-anchor">
+                <div id="destination-input-shell" class="chips-input" tabindex="0">
+                  <div id="destination-chips" class="chips"></div>
+                  <input
+                    id="destination-input"
+                    name="destination_text"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="Search destinations"
+                  />
+                </div>
+                <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
+              </div>
+
+              <div class="field-meta">
+                <div>
+                  <p class="helper-text">Track up to 3 destinations.</p>
+                </div>
+                <button id="clear-destinations" class="link-button hidden" type="button">Clear all</button>
+              </div>
+              <p id="destination-error" class="field-error hidden"></p>
+              <input id="destination-airport-codes" name="destination_airport_codes" type="hidden" value="[]" />
+            </div>
+
+            <div class="field">
+              <label>Trip type</label>
+              <div class="inline-options">
+                <label class="inline-option">
+                  <input type="radio" name="trip_type" value="round_trip" checked />
+                  <span>Round trip</span>
+                </label>
+                <label class="inline-option">
+                  <input type="radio" name="trip_type" value="one_way" />
+                  <span>One way</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="travelers-input">How many adults are traveling?</label>
+              <input id="travelers-input" name="travelers" type="number" min="1" max="4" value="1" required />
+              <p class="helper-text">Up to 4 adults</p>
+              <p id="travelers-error" class="field-error hidden"></p>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="budget-section-title">
+            <h3 id="budget-section-title" class="form-section-title">Your budget</h3>
+
+            <div class="field">
+              <label for="max-price-input">What price per traveler would feel like a great deal?</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
               <input
-                id="origin-input"
-                name="origin_text"
-                type="text"
-                autocomplete="off"
-                placeholder="Search departures"
+                id="max-price-input"
+                name="max_price_per_traveler"
+                type="number"
+                min="1"
+                placeholder="250"
+                required
               />
             </div>
-            <div id="origin-menu" class="dropdown hidden" role="listbox"></div>
-          </div>
-          <input id="origin-airport-code" name="origin_airport_code" type="hidden" />
-          <p id="origin-error" class="field-error hidden"></p>
-        </div>
+              <p class="helper-text">Applies to all destinations — you can refine later.</p>
+              <p id="low-price-warning" class="field-warning hidden"></p>
+              <p id="budget-context" class="helper-tip">If you track multiple destinations, this budget applies to all of them for now.</p>
 
-        <div class="field">
-          <label for="destination-input">Where would you like to go?</label>
-          <div id="destination-autocomplete-anchor" class="autocomplete-anchor">
-            <div id="destination-input-shell" class="chips-input" tabindex="0">
-              <div id="destination-chips" class="chips"></div>
-              <input
-                id="destination-input"
-                name="destination_text"
-                type="text"
-                autocomplete="off"
-                placeholder="Search destinations"
-              />
+              <div class="budget-guide" id="budget-guide">
+                <div>
+                  <p id="budget-guide-title" class="budget-guide-title">Not sure what to enter?</p>
+                  <p id="budget-guide-copy" class="budget-guide-copy">
+                    Start with a price that would make you feel good booking. You can always adjust it later.
+                  </p>
+                </div>
+                <button id="budget-suggestion-button" class="budget-suggestion-button hidden" type="button">
+                  Use starter target
+                </button>
+              </div>
+
+              <p id="max-price-error" class="field-error hidden"></p>
             </div>
-            <div id="destination-menu" class="dropdown hidden" role="listbox"></div>
-          </div>
+          </section>
 
-          <div class="field-meta">
-            <div>
-              <p class="helper-text">Track up to 3 destinations.</p>
-              <p class="helper-tip">You can add more later.</p>
+          <section class="form-section" aria-labelledby="flexibility-section-title">
+            <h3 id="flexibility-section-title" class="form-section-title">Your flexibility</h3>
+
+            <div class="field">
+              <label>Which days can you travel?</label>
+              <div id="available-days" class="day-buttons">
+                <button type="button" class="day-button" data-day="mon">Mon</button>
+                <button type="button" class="day-button" data-day="tue">Tue</button>
+                <button type="button" class="day-button" data-day="wed">Wed</button>
+                <button type="button" class="day-button" data-day="thu">Thu</button>
+                <button type="button" class="day-button" data-day="fri">Fri</button>
+                <button type="button" class="day-button" data-day="sat">Sat</button>
+                <button type="button" class="day-button" data-day="sun">Sun</button>
+              </div>
+              <p class="helper-text">Pick the days you&rsquo;d be open to taking a trip.</p>
+              <input id="available-days-input" name="available_departure_days" type="hidden" value="[]" />
+              <p id="available-days-error" class="field-error hidden"></p>
             </div>
-            <button id="clear-destinations" class="link-button hidden" type="button">Clear all</button>
-          </div>
-          <p id="destination-error" class="field-error hidden"></p>
-          <input id="destination-airport-codes" name="destination_airport_codes" type="hidden" value="[]" />
-        </div>
 
-        <div class="field">
-          <label>Trip type</label>
-          <div class="inline-options">
-            <label class="inline-option">
-              <input type="radio" name="trip_type" value="round_trip" checked />
-              <span>Round trip</span>
-            </label>
-            <label class="inline-option">
-              <input type="radio" name="trip_type" value="one_way" />
-              <span>One way</span>
-            </label>
-          </div>
-        </div>
+            <div class="field">
+              <label for="min-days-input">What&rsquo;s the minimum trip length you&rsquo;d consider booking?</label>
+              <input id="min-days-input" name="min_days" type="number" min="1" value="1" required />
+              <p class="helper-tip">Example: enter 3 if a 1&ndash;2 day trip would feel too short.</p>
+              <p id="min-days-error" class="field-error hidden"></p>
+            </div>
+          </section>
 
-        <div class="field">
-          <label for="travelers-input">How many adults are traveling?</label>
-          <input id="travelers-input" name="travelers" type="number" min="1" max="4" value="1" required />
-          <p class="helper-text">Up to 4 adults</p>
-          <p id="travelers-error" class="field-error hidden"></p>
-        </div>
-        </section>
+          <section class="form-section form-section-last" aria-labelledby="alerts-section-title">
+            <h3 id="alerts-section-title" class="form-section-title">Your alerts</h3>
 
-        <section class="form-section" aria-labelledby="budget-section-title">
-          <h3 id="budget-section-title" class="form-section-title">Your budget</h3>
-        <div class="field">
-          <label for="max-price-input">What price would make this a great deal?</label>
-          <input id="max-price-input" name="max_price_per_traveler" type="number" min="1" value="1" required />
-          <p class="helper-text helper-text-tight">(per traveler)</p>
-          <p id="max-price-error" class="field-error hidden"></p>
-        </div>
-        </section>
+            <div id="frequency-field" class="field">
+              <label>How would you like alerts?</label>
+              <div class="inline-options">
+                <label class="inline-option">
+                  <input type="radio" name="frequency" value="immediately" checked />
+                  <span>Immediately</span>
+                </label>
+                <label class="inline-option">
+                  <input type="radio" name="frequency" value="daily" />
+                  <span>Daily digest</span>
+                </label>
+              </div>
+              <p id="frequency-error" class="field-error hidden"></p>
+            </div>
 
-        <section class="form-section" aria-labelledby="flexibility-section-title">
-          <h3 id="flexibility-section-title" class="form-section-title">Your flexibility</h3>
-        <div class="field">
-          <label>Which days can you travel?</label>
-          <div id="available-days" class="day-buttons">
-            <button type="button" class="day-button" data-day="mon">Mon</button>
-            <button type="button" class="day-button" data-day="tue">Tue</button>
-            <button type="button" class="day-button" data-day="wed">Wed</button>
-            <button type="button" class="day-button" data-day="thu">Thu</button>
-            <button type="button" class="day-button" data-day="fri">Fri</button>
-            <button type="button" class="day-button" data-day="sat">Sat</button>
-            <button type="button" class="day-button" data-day="sun">Sun</button>
-          </div>
-          <input id="available-days-input" name="available_departure_days" type="hidden" value="[]" />
-          <p id="available-days-error" class="field-error hidden"></p>
-        </div>
+            <div id="only-matching-field" class="field hidden">
+              <label class="inline-option">
+                <input id="only-matching-input" name="only_send_matching_deals" type="checkbox" checked disabled />
+                <span>Only send matching deals</span>
+              </label>
+            </div>
+          </section>
 
-        <div class="field">
-          <label for="min-days-input">What is the shortest trip you&rsquo;d take?</label>
-          <input id="min-days-input" name="min_days" type="number" min="1" value="1" required />
-          <p id="min-days-error" class="field-error hidden"></p>
-        </div>
-        </section>
-
-        <section class="form-section form-section-last" aria-labelledby="alerts-section-title">
-          <h3 id="alerts-section-title" class="form-section-title">Your alerts</h3>
-        <div id="frequency-field" class="field">
-          <label>How would you like alerts?</label>
-          <div class="inline-options">
-            <label class="inline-option">
-              <input type="radio" name="frequency" value="immediately" checked />
-              <span>Immediately</span>
-            </label>
-            <label class="inline-option">
-              <input type="radio" name="frequency" value="daily" />
-              <span>Daily digest</span>
-            </label>
-          </div>
-          <p id="frequency-error" class="field-error hidden"></p>
-        </div>
-
-        <div id="only-matching-field" class="field hidden">
-          <label class="inline-option">
-            <input id="only-matching-input" name="only_send_matching_deals" type="checkbox" checked disabled />
-            <span>Only send matching deals</span>
-          </label>
-        </div>
-        </section>
-
-        <p id="cta-hint" class="cta-hint hidden"></p>
-        <button type="submit">Start watching for deals</button>
+          <p id="cta-hint" class="cta-hint hidden"></p>
+          <button type="submit">Start tracking deals</button>
         </form>
       </main>
     </div>
