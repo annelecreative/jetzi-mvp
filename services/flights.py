@@ -14,7 +14,10 @@ from services import duffel
 from services import search_cache
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Keep airport data in the repo, not on the persistent disk.
 AIRPORTS_PATH = BASE_DIR / "data" / "airports_min.json"
+
 REQUIRED_AIRPORT_CODES = {
     "SJC",
     "SAN",
@@ -52,6 +55,12 @@ DEFAULT_MAX_DATES_TO_CHECK = 3
 
 
 def load_airports() -> List[Dict[str, str]]:
+    if not AIRPORTS_PATH.exists():
+        raise FileNotFoundError(
+            f"Required airport seed file is missing: {AIRPORTS_PATH}. "
+            "Keep airports_min.json in the repo under data/ and do not mount your persistent disk over /data."
+        )
+
     raw = json.loads(AIRPORTS_PATH.read_text(encoding="utf-8"))
     airports: List[Dict[str, str]] = []
     for item in raw:
@@ -268,12 +277,9 @@ def filter_matching_deals(alert: Dict[str, Any], deals: List[Dict[str, Any]]) ->
     for deal in deals:
         total_price = float(deal.get("total_price", 0) or 0)
 
-        # Price filter first.
         if not matches_price_per_traveler(total_price, adults, max_price):
             continue
 
-        # Some Duffel offers may not include departing_at consistently.
-        # For MVP, do not reject solely because the date is missing.
         depart_date = _date_from_iso_datetime(str(deal.get("departing_at", "")))
         if depart_date:
             if trip_type == "round_trip":
@@ -343,12 +349,8 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
 
                 print(f"Raw offers from Duffel: {len(deals)}")
 
-            # Backfill booking_url for both fresh and cached deals.
             deals = [_ensure_booking_url(deal, return_date=return_date) for deal in deals]
-
-            # Refresh cache with enriched deals so future runs reuse the fixed structure.
             search_cache.set(key, deals)
-
             all_deals.extend(deals)
 
     return all_deals
