@@ -15,7 +15,12 @@ from services.flights import VALID_WEEKDAYS, airport_brief
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-ALERTS_PATH = BASE_DIR / "data" / "alerts.json"
+PERSIST_DIR = BASE_DIR / "persist"
+LEGACY_DATA_DIR = BASE_DIR / "data"
+
+ALERTS_PATH = PERSIST_DIR / "alerts.json"
+LEGACY_ALERTS_PATH = LEGACY_DATA_DIR / "alerts.json"
+
 MAX_DESTINATIONS = 5
 BASE_PRICE_BUCKET_USD = 25
 
@@ -41,7 +46,6 @@ ALERT_SCHEMA_KEYS = (
     "last_deal_total_price",
     "last_no_deal_sent_at",
 )
-
 
 DAY_LABELS = {
     "mon": "Mon",
@@ -138,9 +142,34 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     return {key: normalized.get(key) for key in ALERT_SCHEMA_KEYS}
 
 
+def _initial_alert_payload() -> List[Dict[str, Any]]:
+    """
+    First-run seed behavior:
+    - Prefer existing persisted alerts if present
+    - Otherwise seed from legacy repo data/alerts.json if present
+    - Otherwise start empty
+    """
+    if LEGACY_ALERTS_PATH.exists():
+        try:
+            raw = json.loads(LEGACY_ALERTS_PATH.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                return [item for item in raw if isinstance(item, dict)]
+        except json.JSONDecodeError:
+            pass
+    return []
+
+
+def _ensure_alert_store_exists() -> None:
+    if ALERTS_PATH.exists():
+        return
+    seed = _initial_alert_payload()
+    clean_seed = [_normalize_alert_record(alert) for alert in seed]
+    _atomic_write_json(ALERTS_PATH, clean_seed)
+
+
 def load_alert_records() -> List[Dict[str, Any]]:
-    if not ALERTS_PATH.exists():
-        return []
+    _ensure_alert_store_exists()
+
     try:
         raw = json.loads(ALERTS_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
@@ -411,15 +440,6 @@ def should_suppress_repeat_send(
     min_absolute_improvement_usd: float = 50.0,
     min_percent_improvement: int = 10,
 ) -> tuple[bool, str]:
-    """
-    Suppress repeat sends for the same alert unless the new deal is meaningfully better.
-
-    Rules:
-    - If no prior deal was sent recently: allow.
-    - If a prior deal was sent within `within_hours`:
-      - suppress if the new price is not lower
-      - suppress unless it is at least $50 lower OR 10% lower than last sent
-    """
     last_sent = _parse_iso(str(alert.get("last_deal_sent_at") or ""))
     if not last_sent:
         return False, "no prior sent deal"
