@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
 from services import alerts as alert_service
+from services import email_verifications
 from services import flights as flight_service
 from services import rate_limits
 from services import users as user_service
@@ -20,7 +21,6 @@ AIRPORTS = flight_service.load_airports()
 flight_service.assert_required_airports_present(AIRPORTS)
 AIRPORTS_BY_CODE = flight_service.airports_by_code(AIRPORTS)
 
-# Normalize old records / ensure persistent store exists.
 alert_service.load_alert_records()
 
 app = Flask(__name__)
@@ -132,6 +132,14 @@ def _build_referral_copy_url(referral_code: str) -> str:
     return f"{request.host_url.rstrip('/')}{referral_path}"
 
 
+def _verification_url(token: str) -> str:
+    path = url_for("verify_alert_email", token=token)
+    app_base_url = _configured_app_base_url()
+    if app_base_url:
+        return f"{app_base_url}{path}"
+    return f"{request.host_url.rstrip('/')}{path}"
+
+
 def _client_ip() -> str:
     forwarded_for = (request.headers.get("X-Forwarded-For", "") or "").strip()
     if forwarded_for:
@@ -231,6 +239,25 @@ def alerts_activated():
     )
 
 
+@app.get("/alerts/verify-email/<token>")
+def verify_alert_email(token: str):
+    record = email_verifications.find_token(token)
+    if record is None:
+        return render_template("verification_result.html", success=False)
+
+    alert_id = str(record.get("alert_id", "") or "")
+    email = str(record.get("email", "") or "").strip().lower()
+
+    updated, error = alert_service.activate_alert_with_email(alert_id, email)
+    if error or updated is None:
+        return render_template("verification_result.html", success=False)
+
+    email_verifications.mark_used(token)
+    session[ALERT_SESSION_KEY] = updated
+    session[USER_EMAIL_SESSION_KEY] = email
+    return render_template("verification_result.html", success=True, alert=updated)
+
+
 @app.get("/r/<code>")
 def referral_landing(code: str):
     app.logger.info("Referral hit: %s", code)
@@ -281,19 +308,12 @@ def create_alert():
             429,
         )
 
-    app.logger.info(
-        "create_alert request context: user_email=%s destination_limit=%s",
-        user_email,
-        allowed_destinations,
-    )
-
     alert, error = alert_service.validate_and_build_alert(
         request.form,
         AIRPORTS_BY_CODE,
         max_destinations=allowed_destinations,
     )
     if error:
-        app.logger.info("create_alert validation failed: %s", error)
         return (
             render_template(
                 "index.html",
@@ -308,7 +328,6 @@ def create_alert():
         )
 
     created = alert_service.append_alert_record(alert)
-    app.logger.info("create_alert succeeded: alert_id=%s", created.get("alert_id"))
     session[ALERT_SESSION_KEY] = created
     return redirect(url_for("alert_created"))
 
@@ -371,16 +390,17 @@ def confirm_alert_email():
         user_service.apply_referral_for_new_user(normalized_email, referred_by_code)
     session.pop(REFERRED_BY_CODE_SESSION_KEY, None)
 
-    updated, error = alert_service.activate_alert_with_email(
-        alert.get("alert_id", ""), normalized_email
+    pending_alert, error = alert_service.prepare_alert_email_verification(
+        alert.get("alert_id", ""),
+        normalized_email,
     )
-    if error:
+    if error or pending_alert is None:
         return (
             render_template(
                 "success.html",
                 alert=alert,
                 summary=alert_service.build_alert_summary(alert),
-                email_error=error,
+                email_error=error or "Unable to send verification email.",
                 email_value=request.form.get("email", "").strip(),
                 referral_code="",
                 referral_copy_url="",
@@ -388,26 +408,37 @@ def confirm_alert_email():
             400,
         )
 
+    token_record = email_verifications.create_token(
+        pending_alert.get("alert_id", ""),
+        normalized_email,
+    )
+
+    verification_link = _verification_url(token_record["token"])
+
     from services import email as email_service
 
     subject, text_body, html_body = email_service.compose_alert_email(
         to_email=normalized_email,
-        subject="Your Jetzi alert is live ✈️",
-        intro="Jetzi is now watching your trip.",
+        subject="Verify your Jetzi alert email ✈️",
+        intro="Confirm your email to activate your Jetzi alert.",
         lines=[
-            f"Route: {updated.get('origin_airport_code')} → {', '.join(updated.get('destination_airport_codes', []))}",
-            f"Budget: ${int(updated.get('max_price_per_traveler', 0))} per traveler",
-            "We’ll email you when a deal worth booking appears.",
-            "Most alerts don’t trigger every day — we only send the good ones.",
+            f"Route: {pending_alert.get('origin_airport_code')} → {', '.join(pending_alert.get('destination_airport_codes', []))}",
+            f"Budget: ${int(pending_alert.get('max_price_per_traveler', 0))} per traveler",
+            "Click the verification link below to activate your alert.",
+            verification_link,
         ],
-        unsubscribe_token=updated.get("unsubscribe_token"),
+        unsubscribe_token=pending_alert.get("unsubscribe_token"),
     )
 
     email_service.send_email_resend([normalized_email], subject, text_body, html_body)
 
-    session[ALERT_SESSION_KEY] = updated
+    session[ALERT_SESSION_KEY] = pending_alert
     session[USER_EMAIL_SESSION_KEY] = normalized_email
-    return redirect(url_for("alerts_activated"))
+    return render_template(
+        "verification_sent.html",
+        alert=pending_alert,
+        email=normalized_email,
+    )
 
 
 @app.get("/internal/run-alerts")

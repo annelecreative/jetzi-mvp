@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <body>
+    {% if success %}
+      <h1>Your Jetzi alert is live ✈️</h1>
+      <p>Your email is verified and your alert is now active.</p>
+      <p><a href="/alerts/activated">Continue</a></p>
+    {% else %}
+      <h1>Verification link is invalid or expired</h1>
+      <p>Please create the alert again or request a new verification email.</p>
+      <p><a href="/">Back to Jetzi</a></p>
+    {% endif %}
+  </body>
+</html>

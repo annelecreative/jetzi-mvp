@@ -121,24 +121,12 @@ def _normalize_email(value: Any) -> str:
 
 def _normalized_destinations(alert: Dict[str, Any]) -> List[str]:
     raw = alert.get("destination_airport_codes") or []
-    return sorted(
-        {
-            str(code).strip().upper()
-            for code in raw
-            if str(code).strip()
-        }
-    )
+    return sorted({str(code).strip().upper() for code in raw if str(code).strip()})
 
 
 def _normalized_days(alert: Dict[str, Any]) -> List[str]:
     raw = alert.get("available_departure_days") or []
-    return sorted(
-        {
-            str(day).strip().lower()
-            for day in raw
-            if str(day).strip()
-        }
-    )
+    return sorted({str(day).strip().lower() for day in raw if str(day).strip()})
 
 
 def _alert_fingerprint(alert: Dict[str, Any], email: str) -> tuple:
@@ -168,7 +156,7 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     normalized["email"] = email
 
     status = normalized.get("status")
-    if status not in {"pending_email", "active", "unsubscribed"}:
+    if status not in {"pending_email", "pending_verification", "active", "unsubscribed"}:
         status = "active" if email else "pending_email"
     normalized["status"] = status
 
@@ -258,6 +246,16 @@ def update_alert_record(alert_id: str, updates: Dict[str, Any]) -> Dict[str, Any
 
     save_alert_records(alerts)
     return updated_alert
+
+
+def find_alert_by_id(alert_id: str) -> Dict[str, Any] | None:
+    target = str(alert_id or "").strip()
+    if not target:
+        return None
+    for alert in load_alert_records():
+        if str(alert.get("alert_id", "")) == target:
+            return alert
+    return None
 
 
 def find_alert_by_token(unsubscribe_token: str) -> Dict[str, Any] | None:
@@ -436,16 +434,35 @@ def find_duplicate_active_alert(
     return None
 
 
+def prepare_alert_email_verification(alert_id: str, email: str) -> Tuple[Dict[str, Any] | None, str | None]:
+    if not is_valid_email(email):
+        return None, "Enter a valid email address."
+
+    existing_alert = find_alert_by_id(alert_id)
+    if existing_alert is None:
+        return None, "Alert not found."
+
+    duplicate = find_duplicate_active_alert(existing_alert, email, ignore_alert_id=alert_id)
+    if duplicate is not None:
+        return None, "You already have this alert active."
+
+    updated = update_alert_record(
+        alert_id,
+        {
+            "email": email.strip().lower(),
+            "status": "pending_verification",
+        },
+    )
+    if updated is None:
+        return None, "Alert not found."
+    return updated, None
+
+
 def activate_alert_with_email(alert_id: str, email: str) -> Tuple[Dict[str, Any] | None, str | None]:
     if not is_valid_email(email):
         return None, "Enter a valid email address."
 
-    existing_alert = None
-    for alert in load_alert_records():
-        if alert.get("alert_id") == alert_id:
-            existing_alert = alert
-            break
-
+    existing_alert = find_alert_by_id(alert_id)
     if existing_alert is None:
         return None, "Alert not found."
 
