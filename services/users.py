@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""User profile and referral storage for Jetzi."""
+"""User storage and referral helpers for Jetzi."""
 
 from __future__ import annotations
 
@@ -7,34 +7,27 @@ import json
 import secrets
 import string
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from services import runtime_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-USERS_PATH = BASE_DIR / "data" / "users.json"
-MAX_BONUS_DESTINATION_SLOTS = 3
-MAX_TOTAL_DESTINATION_SLOTS = 4
+PERSIST_DIR = BASE_DIR / "persist"
+LEGACY_DATA_DIR = BASE_DIR / "data"
+
+USERS_PATH = PERSIST_DIR / "users.json"
+LEGACY_USERS_PATH = LEGACY_DATA_DIR / "users.json"
 
 USER_SCHEMA_KEYS = (
     "email",
-    "created_at",
     "referral_code",
-    "referral_count",
-    "bonus_destination_slots",
-    "referred_emails",
     "referred_by_code",
+    "referral_count",
+    "created_at",
 )
 
-
-def normalize_email(email: str) -> str:
-    return (email or "").strip().lower()
-
-
-def _iso_utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+REFERRAL_CODE_LENGTH = 8
 
 
 def _atomic_write_json(path: Path, payload: Any) -> None:
@@ -46,59 +39,65 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
     tmp_path.replace(path)
 
 
+def normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def _iso_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def _generate_referral_code(existing_codes: set[str]) -> str:
-    alphabet = string.ascii_letters + string.digits
-    for _ in range(20):
-        code = "".join(secrets.choice(alphabet) for _ in range(8))
+    alphabet = string.ascii_lowercase + string.digits
+    for _ in range(100):
+        code = "".join(secrets.choice(alphabet) for _ in range(REFERRAL_CODE_LENGTH))
         if code not in existing_codes:
             return code
     raise RuntimeError("Unable to generate unique referral code")
 
 
-def _normalize_user_record(record: Dict[str, Any], existing_codes: set[str]) -> Dict[str, Any]:
-    normalized = dict(record)
-    normalized["email"] = normalize_email(str(normalized.get("email", "")))
-    normalized.setdefault("created_at", _iso_utc_now())
+def _normalize_user_record(user: Dict[str, Any], *, existing_codes: set[str] | None = None) -> Dict[str, Any]:
+    normalized = dict(user)
 
-    referral_code = str(normalized.get("referral_code", "")).strip()
+    normalized["email"] = normalize_email(normalized.get("email", ""))
+    if not normalized["email"]:
+        raise RuntimeError("User record missing email")
+
+    normalized["referred_by_code"] = str(normalized.get("referred_by_code", "") or "").strip().lower()
+    normalized["referral_count"] = max(0, int(normalized.get("referral_count", 0) or 0))
+    normalized["created_at"] = str(normalized.get("created_at", "") or _iso_now()).strip()
+
+    referral_code = str(normalized.get("referral_code", "") or "").strip().lower()
     if not referral_code:
+        existing_codes = existing_codes or set()
         referral_code = _generate_referral_code(existing_codes)
     normalized["referral_code"] = referral_code
-    existing_codes.add(referral_code)
-
-    try:
-        referral_count = int(normalized.get("referral_count", 0) or 0)
-    except (TypeError, ValueError):
-        referral_count = 0
-    normalized["referral_count"] = max(0, referral_count)
-    normalized["bonus_destination_slots"] = min(normalized["referral_count"], MAX_BONUS_DESTINATION_SLOTS)
-
-    referred_emails = normalized.get("referred_emails")
-    if not isinstance(referred_emails, list):
-        referred_emails = []
-    cleaned_referred: List[str] = []
-    for email in referred_emails:
-        normalized_email = normalize_email(str(email))
-        if normalized_email and normalized_email not in cleaned_referred:
-            cleaned_referred.append(normalized_email)
-    normalized["referred_emails"] = cleaned_referred
-
-    raw_referred_by_code = normalized.get("referred_by_code")
-    if raw_referred_by_code in (None, "", "None"):
-        referred_by_code = None
-    else:
-        referred_by_code = str(raw_referred_by_code).strip() or None
-    normalized["referred_by_code"] = referred_by_code
-
-    if not normalized["email"]:
-        return {}
 
     return {key: normalized.get(key) for key in USER_SCHEMA_KEYS}
 
 
+def _initial_user_payload() -> List[Dict[str, Any]]:
+    if LEGACY_USERS_PATH.exists():
+        try:
+            raw = json.loads(LEGACY_USERS_PATH.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                return [item for item in raw if isinstance(item, dict)]
+        except json.JSONDecodeError:
+            pass
+    return []
+
+
+def _ensure_user_store_exists() -> None:
+    if USERS_PATH.exists():
+        return
+    seed = _initial_user_payload()
+    save_user_records(seed)
+
+
 def load_user_records() -> List[Dict[str, Any]]:
-    if not USERS_PATH.exists():
-        return []
+    _ensure_user_store_exists()
 
     try:
         raw = json.loads(USERS_PATH.read_text(encoding="utf-8"))
@@ -108,49 +107,53 @@ def load_user_records() -> List[Dict[str, Any]]:
     if not isinstance(raw, list):
         return []
 
-    normalized: List[Dict[str, Any]] = []
+    normalized_users: List[Dict[str, Any]] = []
     changed = False
-    codes: set[str] = set()
+    seen_codes: set[str] = set()
+
     for item in raw:
         if not isinstance(item, dict):
             continue
-        row = _normalize_user_record(item, codes)
-        if not row:
-            continue
-        if row != item:
+        normalized = _normalize_user_record(item, existing_codes=seen_codes)
+        seen_codes.add(normalized["referral_code"])
+        if normalized != item:
             changed = True
-        normalized.append(row)
+        normalized_users.append(normalized)
 
     if changed:
-        save_user_records(normalized)
-    return normalized
+        save_user_records(normalized_users)
+
+    return normalized_users
 
 
 def save_user_records(users: List[Dict[str, Any]]) -> None:
-    codes: set[str] = set()
-    clean = []
+    clean_users: List[Dict[str, Any]] = []
+    seen_codes: set[str] = set()
+
     for user in users:
-        row = _normalize_user_record(user, codes)
-        if row:
-            clean.append(row)
-    _atomic_write_json(USERS_PATH, clean)
+        clean = _normalize_user_record(user, existing_codes=seen_codes)
+        seen_codes.add(clean["referral_code"])
+        clean_users.append(clean)
+
+    _atomic_write_json(USERS_PATH, clean_users)
 
 
 def find_user_by_email(email: str) -> Dict[str, Any] | None:
-    normalized_email = normalize_email(email)
+    target = normalize_email(email)
+    if not target:
+        return None
     for user in load_user_records():
-        if user.get("email") == normalized_email:
+        if user.get("email") == target:
             return user
     return None
 
 
-def find_user_by_referral_code(referral_code: str) -> Dict[str, Any] | None:
-    code = (referral_code or "").strip()
-    if not code:
+def find_user_by_referral_code(code: str) -> Dict[str, Any] | None:
+    target = str(code or "").strip().lower()
+    if not target:
         return None
-
     for user in load_user_records():
-        if user.get("referral_code") == code:
+        if str(user.get("referral_code", "")).strip().lower() == target:
             return user
     return None
 
@@ -158,23 +161,25 @@ def find_user_by_referral_code(referral_code: str) -> Dict[str, Any] | None:
 def ensure_user(email: str) -> Tuple[Dict[str, Any], bool]:
     normalized_email = normalize_email(email)
     if not normalized_email:
-        raise RuntimeError("User email is required")
+        raise RuntimeError("Email is required")
+
+    existing = find_user_by_email(normalized_email)
+    if existing:
+        return existing, False
 
     users = load_user_records()
-    for user in users:
-        if user.get("email") == normalized_email:
-            return user, False
+    seen_codes = {str(user.get("referral_code", "")).strip().lower() for user in users}
 
-    existing_codes = {str(user.get("referral_code", "")).strip() for user in users}
-    new_user = {
-        "email": normalized_email,
-        "created_at": _iso_utc_now(),
-        "referral_code": _generate_referral_code(existing_codes),
-        "referral_count": 0,
-        "bonus_destination_slots": 0,
-        "referred_emails": [],
-        "referred_by_code": None,
-    }
+    new_user = _normalize_user_record(
+        {
+            "email": normalized_email,
+            "referred_by_code": "",
+            "referral_count": 0,
+            "created_at": _iso_now(),
+        },
+        existing_codes=seen_codes,
+    )
+
     users.append(new_user)
     save_user_records(users)
     return new_user, True
@@ -184,54 +189,50 @@ def allowed_destinations_for_email(email: str | None) -> int:
     base_limit = runtime_config.base_destination_limit()
     normalized_email = normalize_email(email or "")
     if not normalized_email:
-        return min(MAX_TOTAL_DESTINATION_SLOTS, base_limit)
+        return base_limit
 
     user = find_user_by_email(normalized_email)
-    bonus = int(user.get("bonus_destination_slots", 0) or 0) if user else 0
-    total = base_limit + max(0, min(bonus, MAX_BONUS_DESTINATION_SLOTS))
-    return min(MAX_TOTAL_DESTINATION_SLOTS, total)
+    if not user:
+        return base_limit
+
+    referral_count = max(0, int(user.get("referral_count", 0) or 0))
+    return base_limit + referral_count
 
 
-def apply_referral_for_new_user(referred_email: str, referred_by_code: str) -> bool:
-    code = (referred_by_code or "").strip()
-    normalized_referred_email = normalize_email(referred_email)
-    if not code or not normalized_referred_email:
+def apply_referral_for_new_user(new_user_email: str, referred_by_code: str) -> bool:
+    normalized_email = normalize_email(new_user_email)
+    normalized_code = str(referred_by_code or "").strip().lower()
+
+    if not normalized_email or not normalized_code:
         return False
 
     users = load_user_records()
-    referrer_index = -1
-    referred_index = -1
+
+    inviter_idx = None
+    new_user_idx = None
+
     for idx, user in enumerate(users):
-        if user.get("referral_code") == code:
-            referrer_index = idx
-        if user.get("email") == normalized_referred_email:
-            referred_index = idx
+        if user.get("email") == normalized_email:
+            new_user_idx = idx
+        if str(user.get("referral_code", "")).strip().lower() == normalized_code:
+            inviter_idx = idx
 
-    if referrer_index < 0 or referred_index < 0:
+    if inviter_idx is None or new_user_idx is None:
         return False
 
-    referrer = users[referrer_index]
-    referred = users[referred_index]
+    inviter = dict(users[inviter_idx])
+    new_user = dict(users[new_user_idx])
 
-    if referrer.get("email") == normalized_referred_email:
+    if inviter.get("email") == new_user.get("email"):
         return False
 
-    if referred.get("referred_by_code"):
+    if str(new_user.get("referred_by_code", "")).strip():
         return False
 
-    referred_emails = list(referrer.get("referred_emails") or [])
-    if normalized_referred_email in referred_emails:
-        return False
+    new_user["referred_by_code"] = normalized_code
+    inviter["referral_count"] = max(0, int(inviter.get("referral_count", 0) or 0)) + 1
 
-    referred["referred_by_code"] = code
-    referred_emails.append(normalized_referred_email)
-    referrer["referred_emails"] = referred_emails
-    referrer["referral_count"] = int(referrer.get("referral_count", 0) or 0) + 1
-    referrer["bonus_destination_slots"] = min(
-        int(referrer.get("referral_count", 0) or 0), MAX_BONUS_DESTINATION_SLOTS
-    )
-
-    users[referrer_index] = referrer
-    users[referred_index] = referred
+    users[inviter_idx] = inviter
+    users[new_user_idx] = new_user
     save_user_records(users)
     return True
