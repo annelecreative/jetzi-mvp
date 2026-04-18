@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Tuple
 
 from services.flights import VALID_WEEKDAYS, airport_brief
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 PERSIST_DIR = BASE_DIR / "persist"
 LEGACY_DATA_DIR = BASE_DIR / "data"
@@ -116,6 +115,47 @@ def _normalize_price(value: Any) -> float | None:
     return round(normalized, 2)
 
 
+def _normalize_email(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _normalized_destinations(alert: Dict[str, Any]) -> List[str]:
+    raw = alert.get("destination_airport_codes") or []
+    return sorted(
+        {
+            str(code).strip().upper()
+            for code in raw
+            if str(code).strip()
+        }
+    )
+
+
+def _normalized_days(alert: Dict[str, Any]) -> List[str]:
+    raw = alert.get("available_departure_days") or []
+    return sorted(
+        {
+            str(day).strip().lower()
+            for day in raw
+            if str(day).strip()
+        }
+    )
+
+
+def _alert_fingerprint(alert: Dict[str, Any], email: str) -> tuple:
+    return (
+        _normalize_email(email),
+        str(alert.get("origin_airport_code", "")).strip().upper(),
+        tuple(_normalized_destinations(alert)),
+        str(alert.get("trip_type", "")).strip(),
+        int(alert.get("adults", 1) or 1),
+        round(float(alert.get("max_price_per_traveler", 0) or 0), 2),
+        tuple(_normalized_days(alert)),
+        int(alert.get("min_days", 1) or 1),
+        str(alert.get("frequency", "")).strip().lower(),
+        bool(alert.get("only_send_matching_deals", True)),
+    )
+
+
 def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(alert)
     normalized.setdefault("alert_id", str(uuid.uuid4()))
@@ -143,12 +183,6 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _initial_alert_payload() -> List[Dict[str, Any]]:
-    """
-    First-run seed behavior:
-    - Prefer existing persisted alerts if present
-    - Otherwise seed from legacy repo data/alerts.json if present
-    - Otherwise start empty
-    """
     if LEGACY_ALERTS_PATH.exists():
         try:
             raw = json.loads(LEGACY_ALERTS_PATH.read_text(encoding="utf-8"))
@@ -383,9 +417,41 @@ def validate_and_build_alert(
     return {key: record[key] for key in ALERT_SCHEMA_KEYS}, None
 
 
+def find_duplicate_active_alert(
+    alert: Dict[str, Any],
+    email: str,
+    *,
+    ignore_alert_id: str = "",
+) -> Dict[str, Any] | None:
+    target = _alert_fingerprint(alert, email)
+
+    for existing in load_alert_records():
+        if existing.get("status") != "active":
+            continue
+        if str(existing.get("alert_id", "")) == str(ignore_alert_id or ""):
+            continue
+        if _alert_fingerprint(existing, existing.get("email", "")) == target:
+            return existing
+
+    return None
+
+
 def activate_alert_with_email(alert_id: str, email: str) -> Tuple[Dict[str, Any] | None, str | None]:
     if not is_valid_email(email):
         return None, "Enter a valid email address."
+
+    existing_alert = None
+    for alert in load_alert_records():
+        if alert.get("alert_id") == alert_id:
+            existing_alert = alert
+            break
+
+    if existing_alert is None:
+        return None, "Alert not found."
+
+    duplicate = find_duplicate_active_alert(existing_alert, email, ignore_alert_id=alert_id)
+    if duplicate is not None:
+        return None, "You already have this alert active."
 
     updated = update_alert_record(alert_id, {"email": email.strip().lower(), "status": "active"})
     if updated is None:

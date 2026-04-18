@@ -1,37 +1,37 @@
 #!/usr/bin/env python3
 
-import os
-from flask import request
+from __future__ import annotations
 
 import os
 from urllib.parse import urlsplit
 
 import config as app_config
+from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 
 from services import alerts as alert_service
 from services import flights as flight_service
+from services import rate_limits
 from services import users as user_service
 
-from dotenv import load_dotenv
 load_dotenv()
-
-
 
 AIRPORTS = flight_service.load_airports()
 flight_service.assert_required_airports_present(AIRPORTS)
 AIRPORTS_BY_CODE = flight_service.airports_by_code(AIRPORTS)
 
-# Normalize old records (adds status/email/unsubscribe_token defaults).
+# Normalize old records / ensure persistent store exists.
 alert_service.load_alert_records()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv(
     "FLASK_SECRET_KEY", getattr(app_config, "FLASK_SECRET_KEY", "dev-only-change-me")
 )
+
 ALERT_SESSION_KEY = "last_alert"
 REFERRED_BY_CODE_SESSION_KEY = "referred_by_code"
 USER_EMAIL_SESSION_KEY = "user_email"
+
 DEV_TRUSTED_HOSTS = (
     "localhost",
     "localhost:5000",
@@ -41,6 +41,9 @@ DEV_TRUSTED_HOSTS = (
     "[::1]",
     "[::1]:5000",
 )
+
+CREATE_ALERT_LIMIT_PER_HOUR = 5
+CONFIRM_EMAIL_LIMIT_PER_DAY = 5
 
 
 def _is_production_mode() -> bool:
@@ -127,6 +130,20 @@ def _build_referral_copy_url(referral_code: str) -> str:
         if parsed.scheme and parsed.netloc:
             return f"{app_base_url}{referral_path}"
     return f"{request.host_url.rstrip('/')}{referral_path}"
+
+
+def _client_ip() -> str:
+    forwarded_for = (request.headers.get("X-Forwarded-For", "") or "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return (request.headers.get("X-Real-IP", "") or request.remote_addr or "unknown").strip()
+
+
+def _retry_message(seconds: int) -> str:
+    minutes = max(1, round(seconds / 60))
+    if minutes == 1:
+        return "Please try again in about 1 minute."
+    return f"Please try again in about {minutes} minutes."
 
 
 TRUSTED_HOSTS = set(_configure_trusted_hosts())
@@ -241,13 +258,35 @@ def search_airports():
 @app.post("/alerts/create")
 def create_alert():
     app.logger.info("POST /alerts/create hit")
+
     user_email = session.get(USER_EMAIL_SESSION_KEY)
     allowed_destinations = user_service.allowed_destinations_for_email(user_email)
+
+    allowed, retry_after = rate_limits.hit(
+        f"create_ip:{_client_ip()}",
+        limit=CREATE_ALERT_LIMIT_PER_HOUR,
+        window_seconds=3600,
+    )
+    if not allowed:
+        return (
+            render_template(
+                "index.html",
+                initial_alert=session.get(ALERT_SESSION_KEY),
+                allowed_destinations=allowed_destinations,
+                destination_helper_tip="More destinations coming later (subscription + referrals).",
+                can_invite_from_create_page=False,
+                server_error=f"Too many alert creation attempts. {_retry_message(retry_after)}",
+                referred_code=request.args.get("referred", "").strip(),
+            ),
+            429,
+        )
+
     app.logger.info(
         "create_alert request context: user_email=%s destination_limit=%s",
         user_email,
         allowed_destinations,
     )
+
     alert, error = alert_service.validate_and_build_alert(
         request.form,
         AIRPORTS_BY_CODE,
@@ -263,6 +302,7 @@ def create_alert():
                 destination_helper_tip="More destinations coming later (subscription + referrals).",
                 can_invite_from_create_page=False,
                 server_error=error,
+                referred_code=request.args.get("referred", "").strip(),
             ),
             400,
         )
@@ -294,6 +334,23 @@ def confirm_alert_email():
             400,
         )
 
+    allowed, retry_after = rate_limits.hit(
+        f"confirm_email:{normalized_email}",
+        limit=CONFIRM_EMAIL_LIMIT_PER_DAY,
+        window_seconds=86400,
+    )
+    if not allowed:
+        return (
+            render_template(
+                "success.html",
+                alert=alert,
+                summary=alert_service.build_alert_summary(alert),
+                email_error=f"Too many confirmation attempts for this email. {_retry_message(retry_after)}",
+                email_value=email_input.strip(),
+            ),
+            429,
+        )
+
     allowed_destinations = user_service.allowed_destinations_for_email(normalized_email)
     selected_destinations = alert.get("destination_airport_codes", []) or []
     if len(selected_destinations) > allowed_destinations:
@@ -317,7 +374,6 @@ def confirm_alert_email():
     updated, error = alert_service.activate_alert_with_email(
         alert.get("alert_id", ""), normalized_email
     )
-    
     if error:
         return (
             render_template(
@@ -335,16 +391,16 @@ def confirm_alert_email():
     from services import email as email_service
 
     subject, text_body, html_body = email_service.compose_alert_email(
-    to_email=normalized_email,
-    subject="Your Jetzi alert is live ✈️",
-    intro="Jetzi is now watching your trip.",
-    lines=[
-        f"Route: {alert.get('origin_airport_code')} → {', '.join(alert.get('destination_airport_codes', []))}",
-        f"Budget: ${int(alert.get('max_price_per_traveler', 0))} per traveler",
-        "We’ll email you when a deal worth booking appears.",
-        "Most alerts don’t trigger every day — we only send the good ones."
-    ],
-    unsubscribe_token=updated.get("unsubscribe_token"),
+        to_email=normalized_email,
+        subject="Your Jetzi alert is live ✈️",
+        intro="Jetzi is now watching your trip.",
+        lines=[
+            f"Route: {updated.get('origin_airport_code')} → {', '.join(updated.get('destination_airport_codes', []))}",
+            f"Budget: ${int(updated.get('max_price_per_traveler', 0))} per traveler",
+            "We’ll email you when a deal worth booking appears.",
+            "Most alerts don’t trigger every day — we only send the good ones.",
+        ],
+        unsubscribe_token=updated.get("unsubscribe_token"),
     )
 
     email_service.send_email_resend([normalized_email], subject, text_body, html_body)
@@ -352,6 +408,7 @@ def confirm_alert_email():
     session[ALERT_SESSION_KEY] = updated
     session[USER_EMAIL_SESSION_KEY] = normalized_email
     return redirect(url_for("alerts_activated"))
+
 
 @app.get("/internal/run-alerts")
 def run_alerts_internal():
@@ -366,9 +423,11 @@ def run_alerts_internal():
         sys.argv = ["run_alerts.py", "--mode", "deals"]
         run_alerts_main()
         return "Alerts run successfully", 200
-    except Exception as e:
+    except Exception:
         import traceback
+
         return f"<pre>{traceback.format_exc()}</pre>", 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
