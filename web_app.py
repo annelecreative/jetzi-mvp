@@ -451,9 +451,35 @@ def run_alerts_internal():
     try:
         import sys
 
-        sys.argv = ["run_alerts.py", "--mode", "deals"]
+        mode = (request.args.get("mode") or "deals").strip().lower()
+        if mode not in {"deals", "no-deals", "all"}:
+            return "Invalid mode", 400
+
+        limit_raw = (request.args.get("limit") or "1").strip()
+        dry_run_raw = (request.args.get("dry_run") or "").strip().lower()
+
+        argv = ["run_alerts.py", "--mode", mode]
+
+        if limit_raw:
+            try:
+                limit = int(limit_raw)
+                if limit < 1:
+                    return "Invalid limit", 400
+                argv.extend(["--limit", str(limit)])
+            except ValueError:
+                return "Invalid limit", 400
+
+        if dry_run_raw in {"1", "true", "yes", "on"}:
+            argv.append("--dry-run")
+
+        sys.argv = argv
         run_alerts_main()
-        return "Alerts run successfully", 200
+
+        return (
+            f"Alerts run successfully "
+            f"(mode={mode}, limit={limit_raw}, dry_run={'--dry-run' in argv})",
+            200,
+        )
     except Exception:
         import traceback
 
