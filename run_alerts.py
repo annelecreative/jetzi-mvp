@@ -26,6 +26,26 @@ MIN_REPEAT_IMPROVEMENT_USD = 50
 MIN_REPEAT_IMPROVEMENT_PCT = 10
 
 
+def _normalized_code(value: str) -> str:
+    return str(value or "").strip().upper()
+
+
+def _deal_price_per_traveler(deal: dict, adults: int) -> float:
+    """
+    Prefer Duffel's per-traveler field when present.
+    Fall back to total_price / adults.
+    """
+    raw_per_traveler = deal.get("price_per_traveler")
+    try:
+        if raw_per_traveler is not None:
+            return round(float(raw_per_traveler), 2)
+    except (TypeError, ValueError):
+        pass
+
+    total_price = float(deal.get("total_price", 0) or 0)
+    return round(total_price / max(1, adults), 2)
+
+
 def _parse_iso(value: str) -> datetime | None:
     if not value:
         return None
@@ -48,7 +68,7 @@ def _deal_reasons(
     adults = int(alert.get("adults", 1) or 1)
     max_price = float(alert.get("max_price_per_traveler", 0) or 0)
     current_total = float(deal.get("total_price", 0) or 0)
-    per_traveler = current_total / max(1, adults)
+    per_traveler = _deal_price_per_traveler(deal, adults)
 
     if max_price > 0 and per_traveler <= max_price:
         reasons.append(f"Within your target price of ${max_price:.0f} per traveler")
@@ -98,7 +118,7 @@ def _deal_score(
     adults = int(alert.get("adults", 1) or 1)
     max_price = float(alert.get("max_price_per_traveler", 0) or 0)
     total_price = float(deal.get("total_price", 0) or 0)
-    per_traveler = total_price / max(1, adults)
+    per_traveler = _deal_price_per_traveler(deal, adults)
 
     # Personal relevance
     if max_price > 0:
@@ -175,7 +195,7 @@ def _passes_send_gate(
     adults = int(alert.get("adults", 1) or 1)
     max_price = float(alert.get("max_price_per_traveler", 0) or 0)
     total_price = float(deal.get("total_price", 0) or 0)
-    per_traveler = total_price / max(1, adults)
+    per_traveler = _deal_price_per_traveler(deal, adults)
 
     if max_price > 0 and per_traveler > max_price:
         return False, f"over user budget (${per_traveler:.0f} > ${max_price:.0f})"
@@ -251,7 +271,30 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
             significant_drop_pct=significant_drop_pct,
         )
 
-        current_price = float(best_deal.get("total_price", 0) or 0)
+        alert_origin = _normalized_code(alert.get("origin_airport_code", ""))
+        deal_origin = _normalized_code(best_deal.get("origin", ""))
+        alert_destinations = {
+            _normalized_code(code) for code in (alert.get("destination_airport_codes") or [])
+        }
+        deal_destination = _normalized_code(best_deal.get("destination", ""))
+
+        if deal_origin != alert_origin:
+            print(f"Skipping send: origin mismatch ({deal_origin} != {alert_origin})")
+            skipped_quality_gate += 1
+            continue
+
+        if deal_destination not in alert_destinations:
+            print(
+                f"Skipping send: destination mismatch ({deal_destination} not in {sorted(alert_destinations)})"
+            )
+            skipped_quality_gate += 1
+            continue
+
+        current_total_price = float(best_deal.get("total_price", 0) or 0)
+        current_price_per_traveler = _deal_price_per_traveler(
+            best_deal,
+            int(alert.get("adults", 1) or 1),
+        )
 
         print("DEBUG DEAL:", best_deal)
         print(
@@ -259,7 +302,8 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
             {
                 "score": best_score,
                 "baseline_price": baseline_price,
-                "current_price": current_price,
+                "current_total_price": current_total_price,
+                "current_price_per_traveler": current_price_per_traveler,
                 "percent_drop": percent_drop,
             },
         )
@@ -278,7 +322,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
 
         suppress_repeat, repeat_reason = alert_service.should_suppress_repeat_send(
             alert,
-            new_total_price=current_price,
+            new_total_price=current_total_price,
             within_hours=dedupe_hours,
             min_absolute_improvement_usd=MIN_REPEAT_IMPROVEMENT_USD,
             min_percent_improvement=MIN_REPEAT_IMPROVEMENT_PCT,
@@ -303,7 +347,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
         )
         confidence_line = _confidence_line(
             baseline_price=baseline_price,
-            current_price=current_price,
+            current_price=current_total_price,
         )
 
         subject, text_body, html_body = email_service.compose_deal_alert_email(
@@ -333,7 +377,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
                 {
                     "last_deal_sent_at": now_iso,
                     "last_deal_signature": signature,
-                    "last_deal_total_price": round(current_price, 2),
+                    "last_deal_total_price": round(current_total_price, 2),
                 },
             )
             sent += 1
