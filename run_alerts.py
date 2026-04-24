@@ -226,8 +226,23 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
     dedupe_hours = runtime_config.dedupe_hours()
 
     alerts = alert_service.list_active_alerts()
-    if limit is not None and limit > 0:
-        alerts = alerts[:limit]
+    total_active_alerts = len(alerts)
+
+    if limit is not None and limit > 0 and alerts:
+        state_alert = min(
+            alerts,
+            key=lambda alert: str(alert.get("last_checked_at") or alert.get("created_at") or ""),
+        )
+        start_index = alerts.index(state_alert)
+
+        rotated_alerts = alerts[start_index:] + alerts[:start_index]
+        alerts = rotated_alerts[:limit]
+
+    print(
+        f"Alert rotation: total_active={total_active_alerts}, "
+        f"processing={len(alerts)}, "
+        f"first_alert={alerts[0].get('alert_id') if alerts else 'none'}"
+    )
 
     sent = 0
     skipped_duplicate = 0
@@ -246,6 +261,12 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
 
         try:
             print(f"Checking alert {alert.get('alert_id')} for {alert.get('email')}")
+            alert_service.update_alert_record(
+                str(alert.get("alert_id")),
+            {
+                    "last_checked_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            },
+        )
             deals = flight_service.retrieve_and_filter_offers(alert)
             print(f"Deals fetched: {len(deals)}")
         except Exception as e:
