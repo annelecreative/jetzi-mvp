@@ -114,7 +114,7 @@ def _post_offer_request(
         }
     }
 
-    response = requests.post(url, headers=_headers(), data=json.dumps(payload), timeout=(10, 15))
+    response = requests.post(url, headers=_headers(), data=json.dumps(payload), timeout=(5, 8))
     if response.status_code >= 400:
         raise RuntimeError(f"Duffel offer_request error {response.status_code}: {response.text}")
 
