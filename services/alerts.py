@@ -44,6 +44,7 @@ ALERT_SCHEMA_KEYS = (
     "last_deal_signature",
     "last_deal_total_price",
     "last_no_deal_sent_at",
+    "last_checked_at",
 )
 
 DAY_LABELS = {
@@ -166,6 +167,7 @@ def _normalize_alert_record(alert: Dict[str, Any]) -> Dict[str, Any]:
     normalized.setdefault("last_deal_signature", None)
     normalized["last_deal_total_price"] = _normalize_price(normalized.get("last_deal_total_price"))
     normalized.setdefault("last_no_deal_sent_at", None)
+    normalized.setdefault("last_checked_at", None)
 
     return {key: normalized.get(key) for key in ALERT_SCHEMA_KEYS}
 
@@ -411,6 +413,7 @@ def validate_and_build_alert(
         "last_deal_signature": None,
         "last_deal_total_price": None,
         "last_no_deal_sent_at": None,
+        "last_checked_at": None,
     }
     return {key: record[key] for key in ALERT_SCHEMA_KEYS}, None
 
