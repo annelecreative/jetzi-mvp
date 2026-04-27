@@ -42,6 +42,8 @@ AIRLINE_NAMES = {
 def build_unsubscribe_url(unsubscribe_token: str) -> str:
     return f"{APP_BASE_URL}/unsubscribe/{unsubscribe_token}"
 
+def build_manage_alert_url(unsubscribe_token: str) -> str:
+    return f"{APP_BASE_URL}/alerts/manage/{unsubscribe_token}"
 
 def _load_email_template(name: str) -> str:
     template_path = EMAIL_TEMPLATES_DIR / name
@@ -169,6 +171,7 @@ def compose_deal_alert_email(
 
     booking_url = _extract_booking_url(deal)
     unsubscribe_url = build_unsubscribe_url(unsubscribe_token)
+    manage_url = build_manage_alert_url(unsubscribe_token)
 
     depart_at = str(deal.get("departing_at", "") or "").strip()
     arriving_at = str(deal.get("arriving_at", "") or "").strip()
@@ -334,6 +337,10 @@ def compose_deal_alert_email(
                 {_escape(LOW_SPAM_FOOTER)}
               </p>
               <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
+                Manage this alert: <a href="{_escape(manage_url)}" style="color:#4f46e5;text-decoration:none;">view alert</a>.
+              </p>
+
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
                 To stop these emails, <a href="{_escape(unsubscribe_url)}" style="color:#4f46e5;text-decoration:none;">unsubscribe</a>.
               </p>
             </div>
@@ -364,9 +371,13 @@ def compose_no_deal_checkin_email(
     else:
         flexibility = "(flexible dates)"
 
-    subject = f"No deals this week: {origin} → {destinations} {flexibility}"
+    if len(destinations.split(",")) == 1:
+        subject = f"No deals this week: {origin} → {destinations.strip()} {flexibility}"
+    else:
+        subject = f"No deals this week: {origin} → multiple destinations {flexibility}"
 
     unsubscribe_url = build_unsubscribe_url(unsubscribe_token)
+    manage_url = build_manage_alert_url(unsubscribe_token)
 
     text = "\n".join(
         [
@@ -388,6 +399,7 @@ def compose_no_deal_checkin_email(
         flexibility=flexibility,
         low_spam_footer=LOW_SPAM_FOOTER,
         unsubscribe_url=unsubscribe_url,
+        manage_url=manage_url,
     )
     
     return subject, text, html_body

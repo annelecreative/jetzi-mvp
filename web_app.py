@@ -304,6 +304,20 @@ def unsubscribe(token: str):
     return render_template("unsubscribe.html", unsubscribed=bool(alert), alert=alert)
 
 
+@app.get("/alerts/manage/<token>")
+def manage_alert(token: str):
+    alert = alert_service.find_alert_by_token(token)
+    if not alert:
+        return render_template("unsubscribe.html", unsubscribed=False, alert=None)
+
+    return render_template(
+        "unsubscribe.html",
+        unsubscribed=False,
+        alert=alert,
+        manage_mode=True,
+    )
+
+
 @app.get("/api/airports/search")
 def search_airports():
     query = request.args.get("q", "").strip()
