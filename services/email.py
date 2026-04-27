@@ -380,21 +380,16 @@ def compose_no_deal_checkin_email(
         ]
     )
 
-    html_body = f"""
-    <html>
-      <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;">
-        <h2>No deals this week</h2>
-        <p><strong>{origin} → {destinations}</strong></p>
-        <p>Travel flexibility: {flexibility}</p>
-        <p>We're still monitoring and will notify you when something worth booking appears.</p>
-        <p style="font-size:12px;color:#666;">
-          {LOW_SPAM_FOOTER}<br>
-          <a href="{unsubscribe_url}">Unsubscribe</a>
-        </p>
-      </body>
-    </html>
-    """
+    html_template = _load_email_template("no_deal_checkin.html")
 
+    html_body = html_template.format(
+        origin=origin,
+        destinations=destinations,
+        flexibility=flexibility,
+        low_spam_footer=LOW_SPAM_FOOTER,
+        unsubscribe_url=unsubscribe_url,
+    )
+    
     return subject, text, html_body
 
 
