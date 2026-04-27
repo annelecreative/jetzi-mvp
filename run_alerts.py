@@ -446,6 +446,7 @@ def run_no_deal_checkins(limit: int | None = None) -> dict:
 
         subject, text_body, html_body = email_service.compose_no_deal_checkin_email(
             to_email=str(alert.get("email")),
+            alert=alert,
             unsubscribe_token=str(alert.get("unsubscribe_token", "")),
         )
         email_service.send_email_resend([str(alert.get("email"))], subject, text_body, html_body)

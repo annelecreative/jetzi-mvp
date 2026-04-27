@@ -349,26 +349,52 @@ def compose_deal_alert_email(
 def compose_no_deal_checkin_email(
     *,
     to_email: str,
+    alert: dict,
     unsubscribe_token: str,
 ) -> Tuple[str, str, str]:
     del to_email
-    subject = "Still watching your trip 👀"
+
+    origin = str(alert.get("origin_airport_code", "")).upper()
+    destinations = ", ".join(alert.get("destination_airport_codes", []) or [])
+    days = alert.get("available_departure_days", [])
+
+    if days and len(days) < 7:
+        days_label = ", ".join(day.capitalize() for day in days)
+        flexibility = f"({days_label})"
+    else:
+        flexibility = "(flexible dates)"
+
+    subject = f"No deals this week: {origin} → {destinations} {flexibility}"
+
     unsubscribe_url = build_unsubscribe_url(unsubscribe_token)
 
     text = "\n".join(
         [
-            "No strong deals matched your preferences this week.",
-            "We're still monitoring and will let you know when something worth booking appears.",
+            f"No deals found this week for {origin} → {destinations}.",
+            f"Travel flexibility: {flexibility}",
+            "",
+            "We're still monitoring and will notify you when something worth booking appears.",
             "",
             LOW_SPAM_FOOTER,
             f"Unsubscribe: {unsubscribe_url}",
         ]
     )
 
-    html_body = _load_email_template("no_deal_checkin.html").format(
-        low_spam_footer=LOW_SPAM_FOOTER,
-        unsubscribe_url=unsubscribe_url,
-    )
+    html_body = f"""
+    <html>
+      <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial;">
+        <h2>No deals this week</h2>
+        <p><strong>{origin} → {destinations}</strong></p>
+        <p>Travel flexibility: {flexibility}</p>
+        <p>We're still monitoring and will notify you when something worth booking appears.</p>
+        <p style="font-size:12px;color:#666;">
+          {LOW_SPAM_FOOTER}<br>
+          <a href="{unsubscribe_url}">Unsubscribe</a>
+        </p>
+      </body>
+    </html>
+    """
+
     return subject, text, html_body
 
 
