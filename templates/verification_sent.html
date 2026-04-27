@@ -7,15 +7,26 @@
     <p>Your alert will activate after you click the link.</p>
 
     {% if resend_message %}
-      <p style="color: {% if resend_success %}green{% else %}#b45309{% endif %};">
+      <p style="font-size: 14px; margin-top: 12px; color: {% if resend_success %}green{% else %}#b45309{% endif %};">
         {{ resend_message }}
       </p>
     {% endif %}
 
-    <form action="{{ url_for('resend_verification_email') }}" method="post">
-      <button type="submit">
-        Didn’t receive it? Resend email
-      </button>
+    <form action="{{ url_for('resend_verification_email') }}" method="post" style="margin-top: 16px;">
+        <button type="submit"
+            style="
+                padding: 12px 16px;
+                font-size: 16px;
+                border-radius: 8px;
+                border: none;
+                background-color: #2563eb;
+                color: white;
+                width: 100%;
+                max-width: 280px;
+                cursor: pointer;
+            ">
+            Didn’t receive it? Resend email
+        </button>
     </form>
   </body>
 </html>
