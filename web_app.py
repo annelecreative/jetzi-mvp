@@ -156,6 +156,12 @@ def _retry_message(seconds: int) -> str:
 
 TRUSTED_HOSTS = set(_configure_trusted_hosts())
 
+# 🔥 FORCE-ADD PRODUCTION DOMAINS (fix for 403 on custom domain)
+TRUSTED_HOSTS.update([
+    "www.jetzi.ai",
+    "jetzi.ai"
+])
+
 
 @app.before_request
 def enforce_trusted_hosts():

@@ -1,0 +1,168 @@
+[
+  {
+    "alert_id": "5d16b596-ede7-4554-90d8-05e1d14a790d",
+    "created_at": "2026-03-24T23:07:07.778256Z",
+    "unsubscribe_token": "zbmyvkIJzGWF4a0XZwdhWef975CLK-9agmOlktGx5K4",
+    "email": "hoanganhle408@gmail.com",
+    "status": "active",
+    "origin_airport_code": "LAX",
+    "destination_airport_codes": [
+      "JFK"
+    ],
+    "trip_type": "round_trip",
+    "adults": 1,
+    "max_price_per_traveler": 400.0,
+    "available_departure_days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu"
+    ],
+    "min_days": 4,
+    "frequency": "immediately",
+    "only_send_matching_deals": true,
+    "origin_airport": {
+      "code": "LAX",
+      "city": "Los Angeles",
+      "name": "Los Angeles International Airport",
+      "country": "United States"
+    },
+    "destination_airports": [
+      {
+        "code": "JFK",
+        "city": "New York",
+        "name": "John F. Kennedy International Airport",
+        "country": "United States"
+      }
+    ],
+    "last_deal_sent_at": "2026-04-03T02:55:04.886287Z",
+    "last_deal_signature": "JFK||375",
+    "last_deal_total_price": null,
+    "last_no_deal_sent_at": null
+  },
+  {
+    "alert_id": "f215d941-bde1-420f-8154-15eb662ef02c",
+    "created_at": "2026-03-14T00:12:29.950284Z",
+    "unsubscribe_token": "mVzbnKSXrt0Hj9lX6lDwc1OM_PrycCFjVhb4STJxugw",
+    "email": "annelecreative@gmail.com",
+    "status": "active",
+    "origin_airport_code": "SFO",
+    "destination_airport_codes": [
+      "MIA"
+    ],
+    "trip_type": "round_trip",
+    "adults": 2,
+    "max_price_per_traveler": 300.0,
+    "available_departure_days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu"
+    ],
+    "min_days": 4,
+    "frequency": "immediately",
+    "only_send_matching_deals": true,
+    "origin_airport": {
+      "code": "SFO",
+      "city": "San Francisco",
+      "name": "San Francisco International Airport",
+      "country": "United States"
+    },
+    "destination_airports": [
+      {
+        "code": "MIA",
+        "city": "Miami",
+        "name": "Miami International Airport",
+        "country": "United States"
+      }
+    ],
+    "last_deal_sent_at": null,
+    "last_deal_signature": null,
+    "last_deal_total_price": null,
+    "last_no_deal_sent_at": null
+  },
+  {
+    "alert_id": "17f24710-2959-4ed1-8c5d-416c9625ef01",
+    "created_at": "2026-04-12T23:00:01.947369Z",
+    "unsubscribe_token": "qH5UI0w3T5szizr63xGOrFIGmAM0qXNsNHq-2Ud2zJg",
+    "email": null,
+    "status": "pending_email",
+    "origin_airport_code": "SFO",
+    "destination_airport_codes": [
+      "ICN"
+    ],
+    "trip_type": "round_trip",
+    "adults": 2,
+    "max_price_per_traveler": 450.0,
+    "available_departure_days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat"
+    ],
+    "min_days": 6,
+    "frequency": "immediately",
+    "only_send_matching_deals": true,
+    "origin_airport": {
+      "code": "SFO",
+      "city": "San Francisco",
+      "name": "San Francisco International Airport",
+      "country": "United States"
+    },
+    "destination_airports": [
+      {
+        "code": "ICN",
+        "city": "Seoul",
+        "name": "Incheon International Airport",
+        "country": "South Korea"
+      }
+    ],
+    "last_deal_sent_at": null,
+    "last_deal_signature": null,
+    "last_deal_total_price": null,
+    "last_no_deal_sent_at": null
+  },
+  {
+    "alert_id": "f954456d-99cc-490e-abaf-4803cd0c82af",
+    "created_at": "2026-04-18T05:15:25.701333Z",
+    "unsubscribe_token": "ZegrJ01KLYvtQ3FSFJEtcSfqeBN3s9ELcwYckD8JwrM",
+    "email": "annelecreative@gmail.com",
+    "status": "pending_verification",
+    "origin_airport_code": "SFO",
+    "destination_airport_codes": [
+      "PHX"
+    ],
+    "trip_type": "round_trip",
+    "adults": 2,
+    "max_price_per_traveler": 150.0,
+    "available_departure_days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu"
+    ],
+    "min_days": 4,
+    "frequency": "immediately",
+    "only_send_matching_deals": true,
+    "origin_airport": {
+      "code": "SFO",
+      "city": "San Francisco",
+      "name": "San Francisco International Airport",
+      "country": "United States"
+    },
+    "destination_airports": [
+      {
+        "code": "PHX",
+        "city": "Phoenix",
+        "name": "Phoenix Sky Harbor International Airport",
+        "country": "United States"
+      }
+    ],
+    "last_deal_sent_at": null,
+    "last_deal_signature": null,
+    "last_deal_total_price": null,
+    "last_no_deal_sent_at": null
+  }
+]
