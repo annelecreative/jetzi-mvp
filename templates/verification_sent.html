@@ -2,7 +2,20 @@
 <html>
   <body>
     <h1>Check your email</h1>
+
     <p>We sent a verification link to {{ email }}.</p>
     <p>Your alert will activate after you click the link.</p>
+
+    {% if resend_message %}
+      <p style="color: {% if resend_success %}green{% else %}#b45309{% endif %};">
+        {{ resend_message }}
+      </p>
+    {% endif %}
+
+    <form action="{{ url_for('resend_verification_email') }}" method="post">
+      <button type="submit">
+        Didn’t receive it? Resend email
+      </button>
+    </form>
   </body>
 </html>

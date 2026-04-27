@@ -44,6 +44,7 @@ DEV_TRUSTED_HOSTS = (
 
 CREATE_ALERT_LIMIT_PER_HOUR = 5
 CONFIRM_EMAIL_LIMIT_PER_DAY = 5
+RESEND_VERIFICATION_COOLDOWN_SECONDS = 30
 
 
 def _is_production_mode() -> bool:
@@ -138,6 +139,31 @@ def _verification_url(token: str) -> str:
     if app_base_url:
         return f"{app_base_url}{path}"
     return f"{request.host_url.rstrip('/')}{path}"
+
+def _send_alert_verification_email(alert: dict, normalized_email: str) -> None:
+    token_record = email_verifications.create_token(
+        alert.get("alert_id", ""),
+        normalized_email,
+    )
+
+    verification_link = _verification_url(token_record["token"])
+
+    from services import email as email_service
+
+    subject, text_body, html_body = email_service.compose_alert_email(
+        to_email=normalized_email,
+        subject="Verify your Jetzi alert email ✈️",
+        intro="Confirm your email to activate your Jetzi alert.",
+        lines=[
+            f"Route: {alert.get('origin_airport_code')} → {', '.join(alert.get('destination_airport_codes', []))}",
+            f"Budget: ${int(alert.get('max_price_per_traveler', 0))} per traveler",
+            "Click the verification link below to activate your alert.",
+            verification_link,
+        ],
+        unsubscribe_token=alert.get("unsubscribe_token"),
+    )
+
+    email_service.send_email_resend([normalized_email], subject, text_body, html_body)
 
 
 def _client_ip() -> str:
@@ -414,29 +440,7 @@ def confirm_alert_email():
             400,
         )
 
-    token_record = email_verifications.create_token(
-        pending_alert.get("alert_id", ""),
-        normalized_email,
-    )
-
-    verification_link = _verification_url(token_record["token"])
-
-    from services import email as email_service
-
-    subject, text_body, html_body = email_service.compose_alert_email(
-        to_email=normalized_email,
-        subject="Verify your Jetzi alert email ✈️",
-        intro="Confirm your email to activate your Jetzi alert.",
-        lines=[
-            f"Route: {pending_alert.get('origin_airport_code')} → {', '.join(pending_alert.get('destination_airport_codes', []))}",
-            f"Budget: ${int(pending_alert.get('max_price_per_traveler', 0))} per traveler",
-            "Click the verification link below to activate your alert.",
-            verification_link,
-        ],
-        unsubscribe_token=pending_alert.get("unsubscribe_token"),
-    )
-
-    email_service.send_email_resend([normalized_email], subject, text_body, html_body)
+    _send_alert_verification_email(pending_alert, normalized_email)
 
     session[ALERT_SESSION_KEY] = pending_alert
     session[USER_EMAIL_SESSION_KEY] = normalized_email
@@ -444,6 +448,43 @@ def confirm_alert_email():
         "verification_sent.html",
         alert=pending_alert,
         email=normalized_email,
+    )
+
+
+@app.post("/alerts/resend-verification")
+def resend_verification_email():
+    alert = session.get(ALERT_SESSION_KEY)
+    email = session.get(USER_EMAIL_SESSION_KEY, "")
+
+    if not alert or not email:
+        return redirect(url_for("index"))
+
+    normalized_email = user_service.normalize_email(email)
+
+    allowed, retry_after = rate_limits.hit(
+        f"resend_verification:{normalized_email}",
+        limit=1,
+        window_seconds=RESEND_VERIFICATION_COOLDOWN_SECONDS,
+    )
+
+    if not allowed:
+        return render_template(
+            "verification_sent.html",
+            alert=alert,
+            email=normalized_email,
+            resend_message=f"Please wait {_retry_message(retry_after).lower()}",
+            resend_success=False,
+        ), 429
+
+
+    _send_alert_verification_email(alert, normalized_email)
+
+    return render_template(
+        "verification_sent.html",
+        alert=alert,
+        email=normalized_email,
+        resend_message="Sent! Check your inbox again.",
+        resend_success=True,
     )
 
 
