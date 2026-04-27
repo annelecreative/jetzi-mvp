@@ -51,6 +51,9 @@
   const minDaysError = document.getElementById("min-days-error");
   const frequencyError = document.getElementById("frequency-error");
 
+  const tripTypeInputs = Array.from(document.querySelectorAll('input[name="trip_type"]'));
+  const minDaysField = minDaysInput.closest(".field");
+
   let originSelection = null;
   let destinationSelections = [];
   let availableDays = [];
@@ -271,6 +274,19 @@
 
     if (!isDailyDigest) {
       onlyMatchingInput.checked = true;
+    }
+  }
+
+  function getSelectedTripType() {
+    return tripTypeInputs.find((input) => input.checked)?.value || "round_trip";
+  }
+
+  function setMinDaysVisibility() {
+    const isOneWay = getSelectedTripType() === "one_way";
+    minDaysField.classList.toggle("hidden", isOneWay);
+
+    if (isOneWay) {
+      minDaysInput.value = "1";
     }
   }
 
@@ -774,6 +790,14 @@
     });
   });
 
+  tripTypeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      setMinDaysVisibility();
+      formError.classList.add("hidden");
+      updateSubmitState();
+    });
+  });
+
   if (budgetSuggestionButton) {
     budgetSuggestionButton.addEventListener("click", () => {
       if (typeof currentBudgetSuggestion === "number" && currentBudgetSuggestion > 0) {
@@ -822,5 +846,6 @@
   renderAvailableDays();
   updateBudgetGuidance();
   updateLowPriceWarning();
+  setMinDaysVisibility();
   renderValidationState();
 })();
