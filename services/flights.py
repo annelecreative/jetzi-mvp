@@ -42,7 +42,36 @@ REQUIRED_AIRPORT_CODES = {
     "IAD",
     "DCA",
 }
+
 VALID_WEEKDAYS = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+
+AIRPORT_SEARCH_ALIASES = {
+    "hawaii": ["HNL", "OGG", "KOA", "LIH"],
+    "maui": ["OGG"],
+    "oahu": ["HNL"],
+    "honolulu": ["HNL"],
+    "kauai": ["LIH"],
+    "big island": ["KOA", "ITO"],
+
+    "spain": ["MAD", "BCN", "AGP", "PMI", "SVQ", "VLC"],
+    "italy": ["FCO", "MXP", "VCE", "NAP", "FLR"],
+    "france": ["CDG", "ORY", "NCE", "LYS"],
+    "japan": ["HND", "NRT", "KIX", "ITM", "CTS", "FUK"],
+    "thailand": ["BKK", "DMK", "HKT", "CNX"],
+    "bali": ["DPS"],
+    "greece": ["ATH", "JTR", "HER", "SKG"],
+    "portugal": ["LIS", "OPO", "FAO"],
+    "mexico": ["MEX", "CUN", "GDL", "PVR", "SJD"],
+
+    "nyc": ["JFK", "LGA", "EWR"],
+    "new york city": ["JFK", "LGA", "EWR"],
+    "bay area": ["SFO", "OAK", "SJC"],
+    "sf bay area": ["SFO", "OAK", "SJC"],
+    "la": ["LAX", "BUR", "LGB", "SNA"],
+    "los angeles area": ["LAX", "BUR", "LGB", "SNA"],
+    "dc": ["DCA", "IAD", "BWI"],
+    "washington dc": ["DCA", "IAD", "BWI"],
+}
 
 # MVP tuning:
 # Slightly relax the user's max price filter so we do not over-filter too early.
@@ -117,6 +146,17 @@ def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, 
     if not q:
         return []
 
+    airports_by_code_lookup = {
+        _norm(airport["code"]): airport for airport in airports
+    }
+
+    alias_codes = AIRPORT_SEARCH_ALIASES.get(q, [])
+    alias_results = [
+        airports_by_code_lookup[code.lower()]
+        for code in alias_codes
+        if code.lower() in airports_by_code_lookup
+    ]
+
     ranked: List[Tuple[Tuple[float, str], Dict[str, str]]] = []
 
     for airport in airports:
@@ -152,7 +192,20 @@ def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, 
             ranked.append(((score, code), airport))
 
     ranked.sort(key=lambda pair: pair[0])
-    return [item for _, item in ranked[:10]]
+
+    regular_results = [item for _, item in ranked]
+
+    combined = []
+    seen_codes = set()
+
+    for airport in alias_results + regular_results:
+        code = airport["code"]
+        if code in seen_codes:
+            continue
+        seen_codes.add(code)
+        combined.append(airport)
+
+    return combined[:10]
 
 
 def is_trip_within_allowed_weekdays(
