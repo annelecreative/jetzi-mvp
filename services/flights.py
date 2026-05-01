@@ -114,31 +114,42 @@ def _fuzzy_score(query: str, airport: Dict[str, str]) -> float:
 
 def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, str]]:
     q = _norm(query)
+    if not q:
+        return []
+
     ranked: List[Tuple[Tuple[float, str], Dict[str, str]]] = []
 
     for airport in airports:
         code = _norm(airport["code"])
         city = _norm(airport["city"])
         name = _norm(airport["name"])
+        country = _norm(airport["country"])
+
+        score = None
 
         if code == q:
-            ranked.append(((0.0, code), airport))
-            continue
+            score = 0.0
+        elif city == q:
+            score = 0.5
+        elif code.startswith(q):
+            score = 1.0
+        elif city.startswith(q):
+            score = 2.0
+        elif name.startswith(q):
+            score = 3.0
+        elif q in city:
+            score = 4.0
+        elif q in name:
+            score = 5.0
+        elif q in country:
+            score = 6.0
+        else:
+            ratio = _fuzzy_score(q, airport)
+            if ratio >= 0.72:
+                score = 7.0 - ratio
 
-        if code.startswith(q):
-            ranked.append(((1.0, code), airport))
-            continue
-        if city.startswith(q) or name.startswith(q):
-            ranked.append(((2.0, code), airport))
-            continue
-
-        if q in city or q in name:
-            ranked.append(((3.0, code), airport))
-            continue
-
-        ratio = _fuzzy_score(q, airport)
-        if ratio >= 0.72:
-            ranked.append(((4.0 - ratio, code), airport))
+        if score is not None:
+            ranked.append(((score, code), airport))
 
     ranked.sort(key=lambda pair: pair[0])
     return [item for _, item in ranked[:10]]
