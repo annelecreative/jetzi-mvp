@@ -158,7 +158,7 @@ def _send_alert_verification_email(alert: dict, normalized_email: str) -> None:
             f"Route: {alert.get('origin_airport_code')} → {', '.join(alert.get('destination_airport_codes', []))}",
             f"Budget: ${int(alert.get('max_price_per_traveler', 0))} per traveler",
             "Click the verification link below to activate your alert.",
-            verification_link,
+            f"Verify your email: {verification_link}",
         ],
         unsubscribe_token=alert.get("unsubscribe_token"),
     )
