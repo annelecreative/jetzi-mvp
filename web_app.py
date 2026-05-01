@@ -282,7 +282,7 @@ def verify_alert_email(token: str):
     email_verifications.mark_used(token)
     session[ALERT_SESSION_KEY] = updated
     session[USER_EMAIL_SESSION_KEY] = email
-    return render_template("verification_result.html", success=True, alert=updated)
+    return redirect(url_for("alerts_activated"))
 
 
 @app.get("/r/<code>")
