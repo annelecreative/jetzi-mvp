@@ -150,17 +150,12 @@ def _send_alert_verification_email(alert: dict, normalized_email: str) -> None:
 
     from services import email as email_service
 
-    subject, text_body, html_body = email_service.compose_alert_email(
-        to_email=normalized_email,
-        subject="Verify your Jetzi alert email ✈️",
-        intro="Confirm your email to activate your Jetzi alert.",
-        lines=[
-            f"Route: {alert.get('origin_airport_code')} → {', '.join(alert.get('destination_airport_codes', []))}",
-            f"Budget: ${int(alert.get('max_price_per_traveler', 0))} per traveler",
-            "Click the verification link below to activate your alert.",
-            f"Verify your email: {verification_link}",
-        ],
-        unsubscribe_token=alert.get("unsubscribe_token"),
+    subject, text_body, html_body = email_service.compose_verification_email(
+        email=normalized_email,
+        origin=alert.get("origin_airport_code"),
+        destination=", ".join(alert.get("destination_airport_codes", [])),
+        budget=f"${int(alert.get('max_price_per_traveler', 0))}",
+        verify_url=verification_link,
     )
 
     email_service.send_email_resend([normalized_email], subject, text_body, html_body)

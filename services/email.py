@@ -452,5 +452,76 @@ def send_test_email() -> None:
     send_email_resend([target], subject, text_body, html_body)
 
 
+def compose_verification_email(
+    *,
+    email: str,
+    origin: str,
+    destination: str,
+    budget: str,
+    verify_url: str,
+) -> Tuple[str, str, str]:
+
+    subject = f"Verify your Jetzi alert ✈️"
+
+    text = f"""
+Confirm your email to activate your Jetzi alert.
+
+Route: {origin} → {destination}
+Budget: {budget}
+
+Verify your email:
+{verify_url}
+
+Jetzi sends alerts only when a deal is worth booking.
+"""
+
+    html = f"""
+    <html>
+      <body style="margin:0;padding:0;background:#f5f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+        <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
+          
+          <div style="font-size:13px;font-weight:700;color:#4f46e5;letter-spacing:0.02em;text-transform:uppercase;margin-bottom:12px;">
+            Jetzi
+          </div>
+
+          <h1 style="margin:0 0 16px;font-size:28px;font-weight:800;">
+            Confirm your email ✈️
+          </h1>
+
+          <p style="font-size:16px;margin-bottom:16px;">
+            Activate your alert to start receiving great deals.
+          </p>
+
+          <ul style="margin:0 0 24px 18px;font-size:16px;">
+            <li><strong>Route:</strong> {origin} → {destination}</li>
+            <li><strong>Budget:</strong> {budget}</li>
+          </ul>
+
+          <!-- BUTTON -->
+          <div style="margin:24px 0;">
+            <a href="{verify_url}" 
+               style="display:inline-block;background:#4f46e5;color:#ffffff;
+                      padding:14px 22px;border-radius:10px;
+                      text-decoration:none;font-weight:600;font-size:16px;">
+              Verify email
+            </a>
+          </div>
+
+          <p style="font-size:13px;color:#64748b;">
+            If the button doesn’t work, use this link:
+          </p>
+
+          <p style="font-size:13px;color:#64748b;word-break:break-all;">
+            {verify_url}
+          </p>
+
+        </div>
+      </body>
+    </html>
+    """
+
+    return subject, text, html
+
+
 if __name__ == "__main__":
     send_test_email()
