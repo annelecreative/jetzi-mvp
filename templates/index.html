@@ -178,31 +178,13 @@
             </div>
           </section>
 
-          <section class="form-section form-section-last" aria-labelledby="alerts-section-title">
-            <h3 id="alerts-section-title" class="form-section-title">Your alerts</h3>
-
-            <div id="frequency-field" class="field">
-              <label>How would you like alerts?</label>
-              <div class="inline-options">
-                <label class="inline-option">
-                  <input type="radio" name="frequency" value="immediately" checked />
-                  <span>Immediately</span>
-                </label>
-                <label class="inline-option">
-                  <input type="radio" name="frequency" value="daily" />
-                  <span>Daily digest</span>
-                </label>
-              </div>
-              <p id="frequency-error" class="field-error hidden"></p>
-            </div>
-
-            <div id="only-matching-field" class="field hidden">
-              <label class="inline-option">
-                <input id="only-matching-input" name="only_send_matching_deals" type="checkbox" checked disabled />
-                <span>Only send matching deals</span>
-              </label>
-            </div>
-          </section>
+          <div id="frequency-field" class="field">
+            <p class="helper-text">
+              We’ll email you as soon as we find a great deal.
+            </p>
+            <input type="hidden" name="frequency" value="immediately" />
+            <p id="frequency-error" class="field-error hidden"></p>
+          </div>
 
           <p id="cta-hint" class="cta-hint hidden"></p>
           <button type="submit">Start tracking deals</button>
