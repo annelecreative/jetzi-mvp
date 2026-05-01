@@ -1,14 +1,23 @@
 <!doctype html>
 <html>
-  <body>
+  <head>
+    {% if success %}
+      <meta http-equiv="refresh" content="1.5;url=/alerts/activated" />
+    {% endif %}
+  </head>
+  <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px;">
+    
     {% if success %}
       <h1>Your Jetzi alert is live ✈️</h1>
       <p>Your email is verified and your alert is now active.</p>
-      <p><a href="/alerts/activated">Continue</a></p>
+      <p style="margin-top: 16px; color: #64748b;">
+        Redirecting you...
+      </p>
     {% else %}
       <h1>Verification link is invalid or expired</h1>
       <p>Please create the alert again or request a new verification email.</p>
       <p><a href="/">Back to Jetzi</a></p>
     {% endif %}
+
   </body>
 </html>
