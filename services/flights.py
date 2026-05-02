@@ -369,8 +369,17 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     all_deals: List[Dict[str, Any]] = []
 
+    error_count = 0
+    MAX_ERRORS = 2  # 🔥 key fix
+
     for destination in destinations:
         for outbound_date in outbound_dates:
+
+            # 🔥 stop early if too many API issues
+            if error_count >= MAX_ERRORS:
+                print("Too many Duffel errors — stopping early")
+                return all_deals
+
             return_date = ""
             if trip_type == "round_trip":
                 outbound_dt = datetime.strptime(outbound_date, "%Y-%m-%d").date()
@@ -408,6 +417,7 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
                             adults=adults,
                         )
                 except Exception as e:
+                    error_count += 1  # 🔥 count errors
                     print(f"Duffel error for {origin} → {destination} ({outbound_date}): {e}")
                     continue
 
