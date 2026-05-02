@@ -3,34 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jetzi - You're all set</title>
+    <title>Jetzi - Confirm your alert</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   </head>
   <body>
     <div class="page-shell">
       <main class="container container-plain">
-        
+
         <div class="page-intro">
           <p class="hero-brand">Jetzi</p>
-          <h1>You’re all set ✨</h1>
+          <h1>Jetzi is now watching for this trip</h1>
           <p>
-            Jetzi is now watching your trip.<br />
-            We’ll email you when a great deal shows up.
+            Jetzi is ready to watch for prices worth booking — we’ll only email you when a deal stands out.
           </p>
         </div>
 
+        <!-- ALERT SUMMARY -->
         <section class="success-card">
+          <h2>Jetzi alert summary</h2>
+
+          {% for label, value in summary %}
           <div class="summary-row">
-            <span class="summary-label">Email</span>
-            <span>{{ email_value }}</span>
+            <span class="summary-label">{{ label }}</span>
+            <span>{{ value }}</span>
           </div>
+          {% endfor %}
         </section>
 
-        <div class="page-actions">
-          <a href="{{ url_for('index') }}">
-            <button type="button">Track another trip</button>
-          </a>
-        </div>
+        <!-- EMAIL FORM -->
+        <section class="success-card">
+          <h2>Where should we send deal alerts?</h2>
+
+          <form method="POST" action="{{ url_for('confirm_alert_email') }}">
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value="{{ email_value }}"
+              required
+            />
+
+            {% if email_error %}
+              <p style="color:red;">{{ email_error }}</p>
+            {% endif %}
+
+            <button type="submit">
+              Start watching for deals
+            </button>
+          </form>
+        </section>
 
       </main>
     </div>

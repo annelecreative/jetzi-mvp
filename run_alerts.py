@@ -437,7 +437,11 @@ def run_no_deal_checkins(limit: int | None = None) -> dict:
             continue
 
         last_deal_sent_at = _parse_iso(str(alert.get("last_deal_sent_at") or ""))
-        if last_deal_sent_at and last_deal_sent_at >= cutoff:
+
+        # Only skip if deal was VERY recent (e.g. last 2 days, not 7)
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(days=2)
+
+        if last_deal_sent_at and last_deal_sent_at >= recent_cutoff:
             continue
 
         last_no_deal_sent_at = _parse_iso(str(alert.get("last_no_deal_sent_at") or ""))
