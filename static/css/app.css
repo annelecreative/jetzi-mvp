@@ -197,9 +197,11 @@ main.container {
 }
 
 .edit-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
   width: 26px;
   height: 26px;
-  margin-bottom: 0.9rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -208,10 +210,12 @@ main.container {
   background: transparent;
   text-decoration: none;
   padding: 0;
+  opacity: 0.6;
 }
 
 .edit-icon-btn:hover {
   color: #667085;
+  opacity: 1;
 }
 
 .edit-icon-btn:focus-visible {
@@ -588,6 +592,21 @@ input[type="email"].is-invalid,
   padding: 1.25rem;
   background: #fff;
   box-shadow: 0 8px 20px var(--shadow-color);
+}
+
+.summary-card {
+  position: relative;
+}
+
+.edit-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  opacity: 0.6;
+}
+
+.edit-icon-btn:hover {
+  opacity: 1;
 }
 
 .success-card + .success-card {
