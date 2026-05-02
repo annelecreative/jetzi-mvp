@@ -1,30 +1,38 @@
 <!doctype html>
-<html>
-  <body>
-    <h1>Check your email</h1>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jetzi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
+</head>
+<body>
+  <div class="page-shell">
+    <main class="container container-plain">
 
-    <p>We sent a verification link to {{ email }}.</p>
-    <p>Your alert will activate after you click the link.</p>
+      <section class="card" style="max-width: 520px; margin: 80px auto; text-align: center; padding: 32px;">
 
-    {% if resend_message %}
-      <p style="font-size: 14px; margin-top: 12px; color: {% if resend_success %}green{% else %}#b45309{% endif %};">
-        {{ resend_message }}
-      </p>
-    {% endif %}
+        <p class="hero-brand">Jetzi</p>
 
-    <form action="{{ url_for('resend_verification_email') }}" method="post" style="margin-top: 12px;">
-        <button type="submit"
-            style="
-                background: none;
-                border: none;
-                padding: 0;
-                font-size: 14px;
-                color: #4f39f6;
-                text-decoration: underline;
-                cursor: pointer;
-            ">
-            Didn’t receive it? Resend email
-        </button>
-    </form>
-  </body>
+        <h1 style="margin-top: 8px;">Check your email ✉️</h1>
+
+        <p style="margin-top: 12px; color: #6b7280;">
+          We sent a verification link to <strong>{{ email }}</strong>.
+        </p>
+
+        <p style="margin-top: 8px; color: #6b7280;">
+          Your alert will activate after you click the link.
+        </p>
+
+        <div style="margin-top: 24px;">
+          <a href="{{ resend_url }}" class="btn btn-secondary">
+            Resend email
+          </a>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+</body>
 </html>
