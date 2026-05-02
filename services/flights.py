@@ -370,12 +370,13 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
     all_deals: List[Dict[str, Any]] = []
 
     error_count = 0
-    MAX_ERRORS = 2  # 🔥 key fix
+    live_duffel_calls = 0
+
+    MAX_ERRORS = 2
+    MAX_LIVE_DUFFEL_CALLS = 3
 
     for destination in destinations:
         for outbound_date in outbound_dates:
-
-            # 🔥 stop early if too many API issues
             if error_count >= MAX_ERRORS:
                 print("Too many Duffel errors — stopping early")
                 return all_deals
@@ -399,7 +400,19 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
                 print(f"Cache hit: {origin} → {destination} ({outbound_date})")
                 deals = cached
             else:
-                print(f"Cache miss: {origin} → {destination} ({outbound_date}) (calling Duffel)")
+                if live_duffel_calls >= MAX_LIVE_DUFFEL_CALLS:
+                    print(
+                        f"Live Duffel call budget reached "
+                        f"({MAX_LIVE_DUFFEL_CALLS}) — stopping early"
+                    )
+                    return all_deals
+
+                live_duffel_calls += 1
+                print(
+                    f"Cache miss: {origin} → {destination} ({outbound_date}) "
+                    f"(calling Duffel {live_duffel_calls}/{MAX_LIVE_DUFFEL_CALLS})"
+                )
+
                 try:
                     if trip_type == "round_trip":
                         deals = duffel.fetch_round_trip_offers(
@@ -417,14 +430,14 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
                             adults=adults,
                         )
                 except Exception as e:
-                    error_count += 1  # 🔥 count errors
+                    error_count += 1
                     print(f"Duffel error for {origin} → {destination} ({outbound_date}): {e}")
                     continue
 
                 print(f"Raw offers from Duffel: {len(deals)}")
+                search_cache.set(key, deals)
 
             deals = [_ensure_booking_url(deal, return_date=return_date) for deal in deals]
-            search_cache.set(key, deals)
             all_deals.extend(deals)
 
     return all_deals
