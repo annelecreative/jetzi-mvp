@@ -3,56 +3,80 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jetzi - Confirm your alert</title>
+    <title>Jetzi - Alert Created</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}" />
   </head>
   <body>
     <div class="page-shell">
       <main class="container container-plain">
-
         <div class="page-intro">
           <p class="hero-brand">Jetzi</p>
           <h1>Jetzi is now watching for this trip</h1>
-          <p>
-            Jetzi is ready to watch for prices worth booking — we’ll only email you when a deal stands out.
-          </p>
+          <p>Jetzi is ready to watch for prices worth booking — we’ll only email you when a deal stands out.</p>
         </div>
 
-        <!-- ALERT SUMMARY -->
         <section class="success-card">
-          <h2>Jetzi alert summary</h2>
-
-          {% for label, value in summary %}
-          <div class="summary-row">
-            <span class="summary-label">{{ label }}</span>
-            <span>{{ value }}</span>
+          <div class="section-title-row">
+            <h2>Jetzi alert summary</h2>
           </div>
-          {% endfor %}
+
+          <div class="summary-row">
+            <span class="summary-label">Departure</span>
+            <span>{{ alert.origin_airport.city }} ({{ alert.origin_airport.code }})</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Destinations</span>
+            <div class="chips">
+              {% for airport in alert.destination_airports %}
+              <span class="chip">{{ airport.city }} ({{ airport.code }})</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Trip type</span>
+            <span>{{ summary.trip_type_label }}</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Travelers</span>
+            <span>{{ alert.adults }}</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Deal price target</span>
+            <span>${{ "%.2f"|format(alert.max_price_per_traveler) }}</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Travel days available</span>
+            <span>{{ summary.available_day_labels|join(", ") }}</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Shortest trip length</span>
+            <span>{{ alert.min_days }}</span>
+          </div>
         </section>
 
-        <!-- EMAIL FORM -->
-        <section class="success-card">
+        <section class="success-card email-capture-card">
           <h2>Where should we send deal alerts?</h2>
+          <p class="helper-text card-intro">We only email when we find a deal meaningfully cheaper than usual.</p>
 
-          <form method="POST" action="{{ url_for('confirm_alert_email') }}">
-            <input
-              type="email"
-              name="email"
-              placeholder="Enter your email"
-              value="{{ email_value }}"
-              required
-            />
+          <form action="{{ url_for('confirm_alert_email') }}" method="post" class="email-capture-form" novalidate>
+            <label for="email-input">Email address</label>
+            <input id="email-input" name="email" type="email" required value="{{ email_value or '' }}" />
 
             {% if email_error %}
-              <p style="color:red;">{{ email_error }}</p>
+            <p class="field-error">{{ email_error }}</p>
             {% endif %}
 
-            <button type="submit">
-              Start watching for deals
-            </button>
+            <div class="page-actions">
+              <button type="submit">Start watching for deals</button>
+            </div>
           </form>
         </section>
-
       </main>
     </div>
   </body>
