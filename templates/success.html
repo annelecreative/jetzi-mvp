@@ -17,7 +17,21 @@
 
         <section class="success-card">
           <div class="section-title-row">
-            <h2>Jetzi alert summary</h2>
+            <div class="section-title-row">
+              <h2>
+                <svg class="ui-icon ui-icon--purple section-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M10.268 21A2 2 0 0 0 13.732 21"></path>
+                  <path d="M3.262 15.326A1 1 0 0 0 4 17H20A1 1 0 0 0 20.74 15.326C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8C6 12.499 4.589 13.956 3.262 15.326"></path>
+                </svg>
+                Jetzi alert summary
+              </h2>
+              <a class="edit-icon-btn" href="{{ url_for('index', restore=1) }}" aria-label="Edit alert">
+                <svg class="ui-icon ui-icon--muted ui-icon--sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 20H21"></path>
+                  <path d="M16.5 3.5A2.121 2.121 0 1 1 19.5 6.5L7 19L3 20L4 16Z"></path>
+                </svg>
+              </a>
+            </div>
           </div>
 
           <div class="summary-row">
@@ -61,7 +75,13 @@
         </section>
 
         <section class="success-card email-capture-card">
-          <h2>Where should we send deal alerts?</h2>
+          <h2>
+            <svg class="ui-icon ui-icon--purple section-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <path d="M3 7L12 13L21 7"></path>
+            </svg>
+            Where should we send deal alerts?
+          </h2>
           <p class="helper-text card-intro">We only email when we find a deal meaningfully cheaper than usual.</p>
 
           <form action="{{ url_for('confirm_alert_email') }}" method="post" class="email-capture-form" novalidate>
