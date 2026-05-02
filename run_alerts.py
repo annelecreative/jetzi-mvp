@@ -18,7 +18,7 @@ from services import runtime_config
 # - Must be below user budget
 # - Must be meaningfully below recent baseline if baseline exists
 MIN_PERCENT_DROP_TO_SEND = 10
-MIN_SCORE_TO_SEND = 8
+MIN_SCORE_TO_SEND = 4
 
 # New anti-spam repeat-send gate:
 # - Never send repeated deal emails within 24h unless meaningfully better
@@ -197,7 +197,7 @@ def _passes_send_gate(
     total_price = float(deal.get("total_price", 0) or 0)
     per_traveler = _deal_price_per_traveler(deal, adults)
 
-    if max_price > 0 and per_traveler > max_price:
+    if max_price > 0 and per_traveler > max_price * 1.15:
         return False, f"over user budget (${per_traveler:.0f} > ${max_price:.0f})"
 
     if baseline_price is not None:
@@ -299,7 +299,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
         }
         deal_destination = _normalized_code(best_deal.get("destination", ""))
 
-        if deal_origin != alert_origin:
+        if deal_origin != alert_origin and deal_origin not in {"OAK", "SJC", "BUR", "ONT"}:
             print(f"Skipping send: origin mismatch ({deal_origin} != {alert_origin})")
             skipped_quality_gate += 1
             continue
