@@ -171,7 +171,6 @@ def compose_deal_alert_email(
 
     booking_url = _extract_booking_url(deal)
     unsubscribe_url = build_unsubscribe_url(unsubscribe_token)
-    manage_url = build_manage_alert_url(unsubscribe_token)
 
     depart_at = str(deal.get("departing_at", "") or "").strip()
     arriving_at = str(deal.get("arriving_at", "") or "").strip()
@@ -335,9 +334,6 @@ def compose_deal_alert_email(
             <div style="margin-top:28px;padding-top:18px;border-top:1px solid #e5e7eb;">
               <p style="margin:0 0 8px 0;font-size:12px;line-height:1.6;color:#64748b;">
                 {_escape(LOW_SPAM_FOOTER)}
-              </p>
-              <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
-                Manage this alert: <a href="{_escape(manage_url)}" style="color:#4f46e5;text-decoration:none;">view alert</a>.
               </p>
 
               <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
