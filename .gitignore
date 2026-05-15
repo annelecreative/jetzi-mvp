@@ -21,3 +21,5 @@ data/alerts.json
 users.json
 data/alerts.json
 flight_watcher_doc/*.rtf
+persist/alerts.json
+persist/rate_limits.json
