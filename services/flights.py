@@ -141,7 +141,192 @@ def _fuzzy_score(query: str, airport: Dict[str, str]) -> float:
     return max(difflib.SequenceMatcher(a=query, b=field).ratio() for field in fields)
 
 
-def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, str]]:
+COUNTRY_SEARCH_ALIASES = {
+    "spain": {
+        "label": "🇪🇸 Spain",
+        "subtitle": "Country — searches Madrid, Barcelona, Málaga",
+        "country": "Spain",
+        "codes": ["MAD", "BCN", "AGP"],
+    },
+    "france": {
+        "label": "🇫🇷 France",
+        "subtitle": "Country — searches Paris, Nice, Lyon",
+        "country": "France",
+        "codes": ["CDG", "ORY", "NCE"],
+    },
+    "italy": {
+        "label": "🇮🇹 Italy",
+        "subtitle": "Country — searches Rome, Milan, Venice",
+        "country": "Italy",
+        "codes": ["FCO", "MXP", "VCE"],
+    },
+    "japan": {
+        "label": "🇯🇵 Japan",
+        "subtitle": "Country — searches Tokyo, Osaka",
+        "country": "Japan",
+        "codes": ["HND", "NRT", "KIX"],
+    },
+    "thailand": {
+        "label": "🇹🇭 Thailand",
+        "subtitle": "Country — searches Bangkok, Phuket, Chiang Mai",
+        "country": "Thailand",
+        "codes": ["BKK", "HKT", "CNX"],
+    },
+    "mexico": {
+        "label": "🇲🇽 Mexico",
+        "subtitle": "Country — searches Mexico City, Cancun, Guadalajara",
+        "country": "Mexico",
+        "codes": ["MEX", "CUN", "GDL"],
+    },
+    "greece": {
+        "label": "🇬🇷 Greece",
+        "subtitle": "Country — searches Athens, Santorini, Heraklion",
+        "country": "Greece",
+        "codes": ["ATH", "JTR", "HER"],
+    },
+    "portugal": {
+        "label": "🇵🇹 Portugal",
+        "subtitle": "Country — searches Lisbon, Porto, Faro",
+        "country": "Portugal",
+        "codes": ["LIS", "OPO", "FAO"],
+    },
+}
+
+CITY_SEARCH_ALIASES = {
+    "paris": {
+        "label": "🇫🇷 Paris, France",
+        "subtitle": "All airports — CDG, ORY",
+        "city": "Paris",
+        "country": "France",
+        "codes": ["CDG", "ORY"],
+    },
+    "new york": {
+        "label": "🇺🇸 New York City",
+        "subtitle": "All airports — JFK, LGA, EWR",
+        "city": "New York",
+        "country": "United States",
+        "codes": ["JFK", "LGA", "EWR"],
+    },
+    "nyc": {
+        "label": "🇺🇸 New York City",
+        "subtitle": "All airports — JFK, LGA, EWR",
+        "city": "New York",
+        "country": "United States",
+        "codes": ["JFK", "LGA", "EWR"],
+    },
+    "london": {
+        "label": "🇬🇧 London, United Kingdom",
+        "subtitle": "All airports — LHR, LGW, STN",
+        "city": "London",
+        "country": "United Kingdom",
+        "codes": ["LHR", "LGW", "STN"],
+    },
+    "tokyo": {
+        "label": "🇯🇵 Tokyo, Japan",
+        "subtitle": "All airports — HND, NRT",
+        "city": "Tokyo",
+        "country": "Japan",
+        "codes": ["HND", "NRT"],
+    },
+    "san francisco": {
+        "label": "🇺🇸 San Francisco Bay Area",
+        "subtitle": "All airports — SFO, OAK, SJC",
+        "city": "San Francisco",
+        "country": "United States",
+        "codes": ["SFO", "OAK", "SJC"],
+    },
+    "bay area": {
+        "label": "🇺🇸 San Francisco Bay Area",
+        "subtitle": "All airports — SFO, OAK, SJC",
+        "city": "San Francisco",
+        "country": "United States",
+        "codes": ["SFO", "OAK", "SJC"],
+    },
+    "los angeles": {
+        "label": "🇺🇸 Los Angeles Area",
+        "subtitle": "All airports — LAX, BUR, LGB",
+        "city": "Los Angeles",
+        "country": "United States",
+        "codes": ["LAX", "BUR", "LGB"],
+    },
+    "la": {
+        "label": "🇺🇸 Los Angeles Area",
+        "subtitle": "All airports — LAX, BUR, LGB",
+        "city": "Los Angeles",
+        "country": "United States",
+        "codes": ["LAX", "BUR", "LGB"],
+    },
+}
+
+
+def _airport_result(airport: Dict[str, str]) -> Dict[str, Any]:
+    code = str(airport.get("code", "")).upper().strip()
+    city = str(airport.get("city", "")).strip()
+    name = str(airport.get("name", "")).strip()
+    country = str(airport.get("country", "")).strip()
+
+    return {
+        "type": "airport",
+        "code": code,
+        "codes": [code] if code else [],
+        "name": name,
+        "city": city,
+        "country": country,
+        "label": f"✈️ {city} ({code})",
+        "subtitle": name,
+    }
+
+
+def _city_result(data: Dict[str, Any], airports_by_code_lookup: Dict[str, Dict[str, str]]) -> Dict[str, Any] | None:
+    available_codes = [
+        code
+        for code in data.get("codes", [])
+        if code.lower() in airports_by_code_lookup
+    ]
+
+    if not available_codes:
+        return None
+
+    return {
+        "type": "city",
+        "code": available_codes[0],
+        "codes": available_codes,
+        "name": data.get("label", ""),
+        "city": data.get("city", ""),
+        "country": data.get("country", ""),
+        "label": data.get("label", ""),
+        "subtitle": data.get("subtitle", "All airports"),
+    }
+
+
+def _country_result(data: Dict[str, Any], airports_by_code_lookup: Dict[str, Dict[str, str]]) -> Dict[str, Any] | None:
+    available_codes = [
+        code
+        for code in data.get("codes", [])
+        if code.lower() in airports_by_code_lookup
+    ]
+
+    if not available_codes:
+        return None
+
+    return {
+        "type": "country",
+        "code": available_codes[0],
+        "codes": available_codes,
+        "name": data.get("label", ""),
+        "city": "",
+        "country": data.get("country", ""),
+        "label": data.get("label", ""),
+        "subtitle": data.get("subtitle", "Country"),
+    }
+
+
+def rank_airports(
+    query: str,
+    airports: List[Dict[str, str]],
+    *,
+    mode: str = "destination",
+) -> List[Dict[str, Any]]:
     q = _norm(query)
     if not q:
         return []
@@ -150,12 +335,42 @@ def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, 
         _norm(airport["code"]): airport for airport in airports
     }
 
+    combined: List[Dict[str, Any]] = []
+    seen_keys = set()
+
+    def add_result(item: Dict[str, Any] | None) -> None:
+        if not item:
+            return
+
+        key = (
+            item.get("type", "airport"),
+            item.get("label") or item.get("code"),
+            ",".join(item.get("codes", [])),
+        )
+
+        if key in seen_keys:
+            return
+
+        seen_keys.add(key)
+        combined.append(item)
+
+    # Destination mode can show country-level choices like Spain/Japan.
+    # Origin mode stays stricter because the backend needs one clean departure airport.
+    if mode == "destination":
+        for alias, data in COUNTRY_SEARCH_ALIASES.items():
+            if alias.startswith(q) or q in alias:
+                add_result(_country_result(data, airports_by_code_lookup))
+
+    # City groupings are useful for both origin and destination.
+    for alias, data in CITY_SEARCH_ALIASES.items():
+        if alias.startswith(q) or q in alias:
+            add_result(_city_result(data, airports_by_code_lookup))
+
     alias_codes = AIRPORT_SEARCH_ALIASES.get(q, [])
-    alias_results = [
-        airports_by_code_lookup[code.lower()]
-        for code in alias_codes
-        if code.lower() in airports_by_code_lookup
-    ]
+    for code in alias_codes:
+        airport = airports_by_code_lookup.get(code.lower())
+        if airport:
+            add_result(_airport_result(airport))
 
     ranked: List[Tuple[Tuple[float, str], Dict[str, str]]] = []
 
@@ -193,19 +408,10 @@ def rank_airports(query: str, airports: List[Dict[str, str]]) -> List[Dict[str, 
 
     ranked.sort(key=lambda pair: pair[0])
 
-    regular_results = [item for _, item in ranked]
+    for _, airport in ranked:
+        add_result(_airport_result(airport))
 
-    combined = []
-    seen_codes = set()
-
-    for airport in alias_results + regular_results:
-        code = airport["code"]
-        if code in seen_codes:
-            continue
-        seen_codes.add(code)
-        combined.append(airport)
-
-    return combined[:10]
+    return combined[:8]
 
 
 def is_trip_within_allowed_weekdays(

@@ -17,6 +17,12 @@
 
         <section class="success-card summary-card">
 
+          <div class="summary-actions">
+            <a class="back-edit-link" href="{{ url_for('index', restore=1) }}">
+              ← Back to edit
+            </a>
+          </div>
+
           <!-- ✏️ EDIT BUTTON (top-right of card) -->
           <a class="edit-icon-btn" href="{{ url_for('index', restore=1) }}" aria-label="Edit alert">
             <svg class="ui-icon ui-icon--muted ui-icon--sm" viewBox="0 0 24 24" aria-hidden="true">
@@ -38,7 +44,9 @@
 
           <div class="summary-row">
             <span class="summary-label">Departure</span>
-            <span>{{ alert.origin_airport.city }} ({{ alert.origin_airport.code }})</span>
+            <div class="chips">
+              <span class="chip">{{ alert.origin_airport.city }} ({{ alert.origin_airport.code }})</span>
+            </div>
           </div>
 
           <div class="summary-row">

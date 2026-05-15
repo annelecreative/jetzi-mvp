@@ -53,6 +53,7 @@
 
   const tripTypeInputs = Array.from(document.querySelectorAll('input[name="trip_type"]'));
   const minDaysField = minDaysInput.closest(".field");
+  const MAX_MIN_DAYS = 14;
 
   let originSelection = null;
   let destinationSelections = [];
@@ -94,12 +95,48 @@
     }
   }
 
-  function formatAirportReadable(airport) {
-    return `${airport.city} (${airport.code})`;
+  function formatAirportReadable(item) {
+  if (item.type === "country") {
+    return item.label || item.country || item.name;
   }
 
-  function formatSuggestionLabel(airport) {
-    return `${airport.city} (${airport.code}) — ${airport.name}`;
+  if (item.type === "city") {
+    return item.label || `${item.city}, ${item.country}`;
+  }
+
+  return `${item.city} (${item.code})`;
+  }
+
+  function formatSuggestionLabel(item) {
+    if (item.label) {
+      return item.label;
+    }
+
+    if (item.type === "country") {
+      return item.country || item.name;
+    }
+
+    if (item.type === "city") {
+      return `${item.city}, ${item.country}`;
+    }
+
+    return `${item.city} (${item.code}) — ${item.name}`;
+  }
+
+  function formatSuggestionSubtitle(item) {
+    if (item.subtitle) {
+      return item.subtitle;
+    }
+
+    if (item.type === "country") {
+      return "Country";
+    }
+
+    if (item.type === "city") {
+      return "All airports";
+    }
+
+    return item.name || "";
   }
 
   function renderDropdown(menuEl, items, onPick) {
@@ -111,16 +148,21 @@
 
     menuEl.innerHTML = items
       .map(
-        (airport) => `
+        (item) => `
           <button
             type="button"
             class="dropdown-item"
-            data-code="${escapeHtml(airport.code)}"
-            data-name="${escapeHtml(airport.name)}"
-            data-city="${escapeHtml(airport.city)}"
-            data-country="${escapeHtml(airport.country)}"
+            data-type="${escapeHtml(item.type || "airport")}"
+            data-code="${escapeHtml(item.code || "")}"
+            data-codes="${escapeHtml(JSON.stringify(item.codes || []))}"
+            data-name="${escapeHtml(item.name || "")}"
+            data-city="${escapeHtml(item.city || "")}"
+            data-country="${escapeHtml(item.country || "")}"
+            data-label="${escapeHtml(item.label || "")}"
+            data-subtitle="${escapeHtml(item.subtitle || "")}"
           >
-            <span>${escapeHtml(formatSuggestionLabel(airport))}</span>
+            <span>${escapeHtml(formatSuggestionLabel(item))}</span>
+            <small class="dropdown-item-subtitle">${escapeHtml(formatSuggestionSubtitle(item))}</small>
           </button>
         `
       )
@@ -130,13 +172,18 @@
 
     Array.from(menuEl.querySelectorAll(".dropdown-item")).forEach((btn) => {
       btn.addEventListener("click", () => {
-        const airport = {
+        const item = {
+          type: btn.dataset.type || "airport",
           code: btn.dataset.code,
+          codes: JSON.parse(btn.dataset.codes || "[]"),
           name: btn.dataset.name,
           city: btn.dataset.city,
           country: btn.dataset.country,
+          label: btn.dataset.label,
+          subtitle: btn.dataset.subtitle,
         };
-        onPick(airport);
+
+        onPick(item);
       });
     });
 
@@ -208,8 +255,8 @@
     }
   }
 
-  async function fetchAirportSuggestions(query) {
-    const url = `/api/airports/search?q=${encodeURIComponent(query)}`;
+  async function fetchAirportSuggestions(query, mode = "destination") {
+    const url = `/api/airports/search?q=${encodeURIComponent(query)}&mode=${encodeURIComponent(mode)}`;
     const response = await fetch(url);
     const payload = await response.json();
     if (!response.ok) return [];
@@ -217,8 +264,19 @@
   }
 
   function syncDestinationCodesHidden() {
-    const destinationCodes = destinationSelections.map((item) => item.code);
-    destinationCodesHidden.value = JSON.stringify(destinationCodes);
+    const destinationCodes = destinationSelections.flatMap((item) => {
+      if (Array.isArray(item.codes) && item.codes.length > 0) {
+        return item.codes;
+      }
+
+      if (item.code) {
+        return [item.code];
+      }
+
+      return [];
+    });
+
+    destinationCodesHidden.value = JSON.stringify([...new Set(destinationCodes)]);
   }
 
   function syncAvailableDaysHidden() {
@@ -292,11 +350,9 @@
 
   function syncMinDaysLimit() {
     const selectedDayCount = availableDays.length;
-    minDaysInput.max = selectedDayCount > 0 ? String(selectedDayCount) : "";
-    const parsed = parseIntegerInput(minDaysInput.value);
-    if (parsed !== null && parsed < 1) {
-      minDaysInput.value = "1";
-    }
+    const maxAllowedDays = selectedDayCount > 0 ? Math.min(selectedDayCount, MAX_MIN_DAYS) : MAX_MIN_DAYS;
+
+    minDaysInput.max = String(maxAllowedDays);
   }
 
   function parseIntegerInput(rawValue) {
@@ -448,18 +504,22 @@
     }
 
     const minDays = parseIntegerInput(minDaysInput.value);
+    const maxAllowedDays =
+      availableDays.length > 0 ? Math.min(availableDays.length, MAX_MIN_DAYS) : MAX_MIN_DAYS;
+
     if (minDays === null) {
       errors.min_days = "Enter a valid number of days.";
     } else if (minDays < 1) {
       errors.min_days = "Minimum trip length must be at least 1 day.";
-    } else if (availableDays.length > 0 && minDays > availableDays.length) {
-      errors.min_days = `Your minimum trip length can’t be greater than the number of days you selected as available (${availableDays.length}).`;
+    } else if (minDays > maxAllowedDays) {
+      if (availableDays.length > 0) {
+        errors.min_days = `With your selected days, the shortest trip can’t be more than ${availableDays.length} days.`;
+      } else {
+        errors.min_days = `Shortest trip length can’t be more than ${MAX_MIN_DAYS} days.`;
+      }
     }
 
-    if (availableDays.length === 0) {
-      errors.trip_days = "Select at least 1 day you can travel.";
-    }
-
+    
     if (!getSelectedFrequency()) {
       errors.frequency = "Choose when you’d like to be notified.";
     }
@@ -538,8 +598,8 @@
             <button
               type="button"
               class="chip-remove"
-              data-code="${escapeHtml(selection.code)}"
-              aria-label="Remove ${escapeHtml(selection.city)} (${escapeHtml(selection.code)})"
+              data-key="${escapeHtml(selection.code || selection.label || selection.city || selection.country)}"
+              aria-label="Remove ${escapeHtml(formatAirportReadable(selection))}"
             >
               x
             </button>
@@ -551,8 +611,10 @@
     Array.from(destinationChips.querySelectorAll(".chip-remove")).forEach((button) => {
       button.addEventListener("click", () => {
         markTouched("destinations");
-        const code = button.dataset.code;
-        destinationSelections = destinationSelections.filter((item) => item.code !== code);
+        const key = button.dataset.key;
+        destinationSelections = destinationSelections.filter(
+          (item) => (item.code || item.label || item.city || item.country) !== key
+        );
         if (destinationSelections.length < MAX_DESTINATIONS) {
           destinationLimitMessage = "";
         }
@@ -642,7 +704,9 @@
 
   function renderAvailableDays() {
     availableDayButtons.forEach((button) => {
-      const isSelected = availableDays.includes(button.dataset.day);
+      const day = button.dataset.day;
+      const isSelected = day === "any" ? availableDays.length === 0 : availableDays.includes(day);
+
       button.classList.toggle("selected", isSelected);
       button.setAttribute("aria-pressed", isSelected ? "true" : "false");
     });
@@ -660,7 +724,7 @@
       return;
     }
 
-    const items = await fetchAirportSuggestions(q);
+    const items = await fetchAirportSuggestions(q, "origin");
     renderDropdown(originMenu, items, (airport) => {
       originSelection = airport;
       originInput.value = "";
@@ -682,7 +746,7 @@
       return;
     }
 
-    const items = await fetchAirportSuggestions(q);
+    const items = await fetchAirportSuggestions(q, "destination");
     renderDropdown(destinationMenu, items, (airport) => {
       if (destinationSelections.length >= MAX_DESTINATIONS) {
         destinationLimitMessage = `You can add up to ${MAX_DESTINATIONS} destinations.`;
@@ -692,7 +756,13 @@
         return;
       }
 
-      const alreadySelected = destinationSelections.some((item) => item.code === airport.code);
+      const pickedKey = airport.code || airport.label || airport.city || airport.country;
+
+      const alreadySelected = destinationSelections.some((item) => {
+        const existingKey = item.code || item.label || item.city || item.country;
+        return existingKey === pickedKey;
+      });
+
       if (!alreadySelected) {
         destinationSelections.push(airport);
         syncDestinationCodesHidden();
@@ -746,12 +816,17 @@
     button.addEventListener("click", () => {
       markTouched("trip_days");
       markTouched("min_days");
+
       const day = button.dataset.day;
-      if (availableDays.includes(day)) {
+
+      if (day === "any") {
+        availableDays = [];
+      } else if (availableDays.includes(day)) {
         availableDays = availableDays.filter((item) => item !== day);
       } else {
         availableDays.push(day);
       }
+
       syncAvailableDaysHidden();
       renderAvailableDays();
       syncMinDaysLimit();

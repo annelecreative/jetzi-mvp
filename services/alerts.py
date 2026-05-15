@@ -23,6 +23,8 @@ LEGACY_ALERTS_PATH = LEGACY_DATA_DIR / "alerts.json"
 MAX_DESTINATIONS = 5
 BASE_PRICE_BUCKET_USD = 25
 
+MAX_MIN_DAYS = 14
+
 ALERT_SCHEMA_KEYS = (
     "alert_id",
     "created_at",
@@ -360,20 +362,25 @@ def validate_and_build_alert(
     available_departure_days, days_type_valid = _normalize_departure_days(available_departure_days_raw)
     if not days_type_valid:
         return None, "available_departure_days must be a list"
-    if len(available_departure_days) < 1:
-        return None, "Select at least 1 day you can be on a trip."
-
+    
+    
     try:
         min_days = int(min_days_raw)
     except ValueError:
         return None, "min_days must be an integer"
     if min_days < 1:
         return None, "min_days must be at least 1"
+
+    if min_days > MAX_MIN_DAYS:
+        return None, f"Shortest trip length can’t be more than {MAX_MIN_DAYS} days."
+
     selected_day_count = len(available_departure_days)
-    if min_days > selected_day_count:
+
+    # Empty list means "Any day", so only compare against selected days when specific days are chosen.
+    if selected_day_count > 0 and min_days > selected_day_count:
         return (
             None,
-            f"Minimum trip length can't be greater than your selected available departure days ({selected_day_count}).",
+            f"Shortest trip length can't be greater than your selected available days ({selected_day_count}).",
         )
 
     if frequency not in {"immediately", "daily"}:

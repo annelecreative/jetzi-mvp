@@ -316,10 +316,15 @@ def manage_alert(token: str):
 @app.get("/api/airports/search")
 def search_airports():
     query = request.args.get("q", "").strip()
+    mode = request.args.get("mode", "destination").strip().lower()
+
+    if mode not in {"origin", "destination"}:
+        mode = "destination"
+
     if len(query) < 2:
         return jsonify({"error": "Query must be at least 2 characters", "items": []}), 400
 
-    items = flight_service.rank_airports(query, AIRPORTS)
+    items = flight_service.rank_airports(query, AIRPORTS, mode=mode)
     return jsonify({"items": items})
 
 
@@ -339,7 +344,7 @@ def create_alert():
         return (
             render_template(
                 "index.html",
-                initial_alert=session.get(ALERT_SESSION_KEY),
+                initial_alert=None,
                 allowed_destinations=allowed_destinations,
                 destination_helper_tip="More destinations coming later (subscription + referrals).",
                 can_invite_from_create_page=False,
@@ -358,7 +363,7 @@ def create_alert():
         return (
             render_template(
                 "index.html",
-                initial_alert=session.get(ALERT_SESSION_KEY),
+                initial_alert=None,
                 allowed_destinations=allowed_destinations,
                 destination_helper_tip="More destinations coming later (subscription + referrals).",
                 can_invite_from_create_page=False,

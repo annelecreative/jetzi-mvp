@@ -155,8 +155,9 @@
             <h3 id="flexibility-section-title" class="form-section-title">Your flexibility</h3>
 
             <div class="field">
-              <label>Which days can you travel?</label>
+              <label>Which days are you usually available to be away?</label>
               <div id="available-days" class="day-buttons">
+                <button type="button" class="day-button selected" data-day="any" aria-pressed="true">Any day</button>
                 <button type="button" class="day-button" data-day="mon">Mon</button>
                 <button type="button" class="day-button" data-day="tue">Tue</button>
                 <button type="button" class="day-button" data-day="wed">Wed</button>
@@ -165,22 +166,22 @@
                 <button type="button" class="day-button" data-day="sat">Sat</button>
                 <button type="button" class="day-button" data-day="sun">Sun</button>
               </div>
-              <p class="helper-text">Pick the days you&rsquo;d be open to taking a trip.</p>
+              <p class="helper-text">Pick the days you could realistically be away. Choose Any day if you&rsquo;re flexible.</p>
               <input id="available-days-input" name="available_departure_days" type="hidden" value="[]" />
               <p id="available-days-error" class="field-error hidden"></p>
             </div>
 
             <div class="field">
-              <label for="min-days-input">What&rsquo;s the minimum trip length you&rsquo;d consider booking?</label>
-              <input id="min-days-input" name="min_days" type="number" min="1" value="1" required />
-              <p class="helper-tip">Example: enter 3 if a 1&ndash;2 day trip would feel too short.</p>
+              <label for="min-days-input">What&rsquo;s the shortest trip you&rsquo;d consider?</label>
+              <input id="min-days-input" name="min_days" type="number" min="1" max="14" value="1" required />
+              <p class="helper-tip">Example: choose Mon&ndash;Wed and enter 3 if you&rsquo;re open to a 3&ndash;day trip during those days. Max 14 days.</p>
               <p id="min-days-error" class="field-error hidden"></p>
             </div>
           </section>
 
           <div id="frequency-field" class="field">
             <p class="helper-text">
-              We’ll email you when a deal is worth booking.
+              We&rsquo;ll email you when a deal is worth booking.
             </p>
             <input type="radio" name="frequency" value="immediately" checked hidden />
             <p id="frequency-error" class="field-error hidden"></p>
