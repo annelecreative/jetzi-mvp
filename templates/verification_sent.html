@@ -17,18 +17,18 @@
         <h1 style="margin-top: 8px;">Check your email ✉️</h1>
 
         <p style="margin-top: 12px; color: #6b7280;">
-          We sent a verification link to <strong>{{ email }}</strong>.
+            We sent a confirmation link to <strong>{{ email }}</strong>.
         </p>
 
         <p style="margin-top: 8px; color: #6b7280;">
-          Your alert will activate after you click the link.
+            Confirm your alert from the email, then Jetzi will start watching for deals worth booking.
         </p>
 
-        <div style="margin-top: 24px;">
-          <a href="{{ resend_url }}" class="btn btn-secondary">
-            Resend email
-          </a>
-        </div>
+        <form action="{{ url_for('resend_verification_email') }}" method="post" style="margin-top: 24px;">
+            <button type="submit" class="resend-link-button">
+                Resend email
+            </button>
+        </form>
 
       </section>
 

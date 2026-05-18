@@ -425,16 +425,17 @@ def validate_and_build_alert(
     return {key: record[key] for key in ALERT_SCHEMA_KEYS}, None
 
 
-def find_duplicate_active_alert(
+def find_duplicate_watch_alert(
     alert: Dict[str, Any],
     email: str,
     *,
     ignore_alert_id: str = "",
 ) -> Dict[str, Any] | None:
     target = _alert_fingerprint(alert, email)
+    duplicate_statuses = {"pending_verification", "active"}
 
     for existing in load_alert_records():
-        if existing.get("status") != "active":
+        if existing.get("status") not in duplicate_statuses:
             continue
         if str(existing.get("alert_id", "")) == str(ignore_alert_id or ""):
             continue
@@ -452,9 +453,9 @@ def prepare_alert_email_verification(alert_id: str, email: str) -> Tuple[Dict[st
     if existing_alert is None:
         return None, "Alert not found."
 
-    duplicate = find_duplicate_active_alert(existing_alert, email, ignore_alert_id=alert_id)
+    duplicate = find_duplicate_watch_alert(existing_alert, email, ignore_alert_id=alert_id)
     if duplicate is not None:
-        return None, "You already have this alert active."
+        return None, "You’re already watching this trip."
 
     updated = update_alert_record(
         alert_id,
@@ -476,9 +477,9 @@ def activate_alert_with_email(alert_id: str, email: str) -> Tuple[Dict[str, Any]
     if existing_alert is None:
         return None, "Alert not found."
 
-    duplicate = find_duplicate_active_alert(existing_alert, email, ignore_alert_id=alert_id)
+    duplicate = find_duplicate_watch_alert(existing_alert, email, ignore_alert_id=alert_id)
     if duplicate is not None:
-        return None, "You already have this alert active."
+        return None, "You’re already watching this trip."
 
     updated = update_alert_record(alert_id, {"email": email.strip().lower(), "status": "active"})
     if updated is None:

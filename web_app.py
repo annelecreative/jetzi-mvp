@@ -150,12 +150,45 @@ def _send_alert_verification_email(alert: dict, normalized_email: str) -> None:
 
     from services import email as email_service
 
+    selected_days = alert.get("available_departure_days", []) or []
+    day_labels = {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun",
+    }
+    travel_days = ", ".join(day_labels.get(day, day) for day in selected_days) if selected_days else "Any day"
+
+    origin_airport = alert.get("origin_airport") or {}
+    destination_airports = alert.get("destination_airports") or []
+
+    origin_label = (
+        f"{origin_airport.get('city')} ({origin_airport.get('code')})"
+        if origin_airport.get("city") and origin_airport.get("code")
+        else str(alert.get("origin_airport_code", "")).upper()
+    )
+
+    destination_label = ", ".join(
+        f"{airport.get('city')} ({airport.get('code')})"
+        for airport in destination_airports
+        if airport.get("city") and airport.get("code")
+    ) or ", ".join(alert.get("destination_airport_codes", []))
+    
     subject, text_body, html_body = email_service.compose_verification_email(
         email=normalized_email,
         origin=alert.get("origin_airport_code"),
         destination=", ".join(alert.get("destination_airport_codes", [])),
+        origin_label=origin_label,
+        destination_label=destination_label,
         budget=f"${int(alert.get('max_price_per_traveler', 0))}",
         verify_url=verification_link,
+        trip_type=alert.get("trip_type", "round_trip"),
+        travelers=alert.get("adults", 1),
+        travel_days=travel_days,
+        min_days=alert.get("min_days", 1),
     )
 
     email_service.send_email_resend([normalized_email], subject, text_body, html_body)

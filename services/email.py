@@ -453,22 +453,46 @@ def compose_verification_email(
     email: str,
     origin: str,
     destination: str,
+    origin_label: str = "",
+    destination_label: str = "",
     budget: str,
     verify_url: str,
+    trip_type: str = "",
+    travelers: int | str = "",
+    travel_days: str = "",
+    min_days: int | str = "",
 ) -> Tuple[str, str, str]:
+    del email
 
-    subject = f"Verify your Jetzi alert ✈️"
+    origin = str(origin or "").upper()
+    destination = str(destination or "").upper()
+    route_label = f"{origin} → {destination}".strip()
+    origin_display = origin_label or origin
+    destination_display = destination_label or destination
+
+    subject = f"Confirm your {route_label} Jetzi alert ✈️"
+
+    trip_type_label = "Round trip" if trip_type == "round_trip" else "One way"
+    travelers_label = str(travelers or "1")
+    travel_days_label = travel_days or "Any day"
+    min_days_label = str(min_days or "1")
 
     text = f"""
-Confirm your email to activate your Jetzi alert.
+Confirm this Jetzi alert.
 
-Route: {origin} → {destination}
-Budget: {budget}
+Alert summary:
+Departure: {origin_display}
+Destination: {destination_display}
+Trip type: {trip_type_label}
+Travelers: {travelers_label}
+Deal price target: {budget}
+Travel days available: {travel_days_label}
+Shortest trip length: {min_days_label}
 
-Verify your email:
+Confirm this alert:
 {verify_url}
 
-Jetzi sends alerts only when a deal is worth booking.
+After you confirm, Jetzi will start watching and only email when a deal looks worth booking.
 """
 
     html = f"""
@@ -480,35 +504,70 @@ Jetzi sends alerts only when a deal is worth booking.
             Jetzi
           </div>
 
-          <h1 style="margin:0 0 16px;font-size:28px;font-weight:800;">
-            Confirm your email ✈️
+          <h1 style="margin:0 0 16px;font-size:30px;line-height:1.15;font-weight:800;">
+            Confirm this alert ✈️
           </h1>
 
-          <p style="font-size:16px;margin-bottom:16px;">
-            Activate your alert to start receiving great deals.
+          <p style="font-size:16px;line-height:1.6;margin:0 0 20px;color:#334155;">
+            Review your trip details below, then confirm to start watching for deals worth booking.
           </p>
 
-          <ul style="margin:0 0 24px 18px;font-size:16px;">
-            <li><strong>Route:</strong> {origin} → {destination}</li>
-            <li><strong>Budget:</strong> {budget}</li>
-          </ul>
+          <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;margin:0 0 24px;">
+            <h2 style="margin:0 0 14px;font-size:18px;line-height:1.3;font-weight:800;color:#0f172a;">
+              Jetzi alert summary
+            </h2>
 
-          <!-- BUTTON -->
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:15px;line-height:1.6;">
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;width:42%;">Departure</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(origin_display)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Destination</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(destination_display)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Trip type</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(trip_type_label)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Travelers</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(travelers_label)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Deal price target</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(budget)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Travel days available</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(travel_days_label)}</td>
+              </tr>
+              <tr>
+                <td style="padding:5px 0;color:#475569;font-weight:700;">Shortest trip length</td>
+                <td style="padding:5px 0;color:#0f172a;">{_escape(min_days_label)}</td>
+              </tr>
+            </table>
+          </div>
+
           <div style="margin:24px 0;">
-            <a href="{verify_url}" 
+            <a href="{_escape(verify_url)}" 
                style="display:inline-block;background:#4f46e5;color:#ffffff;
                       padding:14px 22px;border-radius:10px;
-                      text-decoration:none;font-weight:600;font-size:16px;">
-              Verify email
+                      text-decoration:none;font-weight:700;font-size:16px;">
+              Confirm alert
             </a>
           </div>
 
-          <p style="font-size:13px;color:#64748b;">
+          <p style="font-size:13px;line-height:1.6;color:#64748b;margin:24px 0 8px;">
             If the button doesn’t work, use this link:
           </p>
 
-          <p style="font-size:13px;color:#64748b;word-break:break-all;">
-            {verify_url}
+          <p style="font-size:13px;line-height:1.6;color:#64748b;word-break:break-all;margin:0;">
+            <a href="{_escape(verify_url)}" style="color:#2563eb;">{_escape(verify_url)}</a>
+          </p>
+
+          <p style="font-size:12px;line-height:1.6;color:#64748b;margin:28px 0 0;">
+            Jetzi sends alerts only when a deal looks worth booking.
           </p>
 
         </div>
