@@ -896,6 +896,18 @@
     }
   });
 
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      const target = event.target;
+
+      if (target instanceof HTMLInputElement && target.type === "number") {
+        target.blur();
+      }
+    },
+    { passive: true }
+  );
+
   form.addEventListener("submit", (event) => {
     submitAttempted = true;
     formError.classList.add("hidden");

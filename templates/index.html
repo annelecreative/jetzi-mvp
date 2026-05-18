@@ -125,13 +125,14 @@
               <input
                 id="max-price-input"
                 name="max_price_per_traveler"
-                type="number"
-                min="1"
-                placeholder="250"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder=""
                 required
               />
             </div>
-              <p class="helper-text">Applies to all destinations — you can refine later.</p>
+              <p class="helper-text">Use one price target for all selected destinations for now. Pick the highest price per traveler that would still feel worth booking.</p>
               <p id="low-price-warning" class="field-warning hidden"></p>
               <p id="budget-context" class="helper-tip">If you track multiple destinations, this budget applies to all of them for now.</p>
 
