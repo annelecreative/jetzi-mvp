@@ -154,9 +154,46 @@ def _pick_best_deal(
     min_observations: int,
     significant_drop_pct: int,
 ) -> tuple[dict, float | None, int | None, int]:
-    ranked: list[tuple[int, float, int, dict, float | None, int | None]] = []
+    """
+    Pick the lowest trustworthy deal, not merely the highest-scoring deal.
+
+    Trustworthy means:
+    - has a valid positive price
+    - has origin/destination
+    - passes the existing Jetzi score gate when possible
+
+    Then we sort by lowest total price first.
+    """
+    candidates: list[tuple[float, int, int, dict, float | None, int | None]] = []
 
     for idx, deal in enumerate(deals):
+        current_price = float(deal.get("total_price", 0) or 0)
+
+        if current_price <= 0:
+            continue
+
+        deal_origin = _normalized_code(deal.get("origin", "")) or _normalized_code(alert.get("origin_airport_code", ""))
+
+        alert_destinations = [
+            _normalized_code(code)
+            for code in (alert.get("destination_airport_codes") or [])
+        ]
+        deal_destination = _normalized_code(deal.get("destination", "")) or (
+            alert_destinations[0] if alert_destinations else ""
+        )
+
+        if not deal_origin or not deal_destination:
+            continue
+
+        deal = dict(deal)
+        deal["origin"] = deal_origin
+        deal["destination"] = deal_destination
+        if deal_origin != _normalized_code(alert.get("origin_airport_code", "")):
+            continue
+
+        if deal_destination not in alert_destinations:
+            continue
+
         baseline_price = price_observations.baseline_for_alert_destination(
             alert,
             str(deal.get("destination", "")),
@@ -164,7 +201,6 @@ def _pick_best_deal(
             min_observations=min_observations,
         )
 
-        current_price = float(deal.get("total_price", 0) or 0)
         percent_drop = None
         if baseline_price and baseline_price > 0:
             percent_drop = round(((baseline_price - current_price) / baseline_price) * 100)
@@ -177,10 +213,15 @@ def _pick_best_deal(
             significant_drop_pct=significant_drop_pct,
         )
 
-        ranked.append((score, -current_price, -idx, deal, baseline_price, percent_drop))
+        candidates.append((current_price, -score, idx, deal, baseline_price, percent_drop))
 
-    ranked.sort(reverse=True)
-    best_score, _, _, best_deal, baseline_price, percent_drop = ranked[0]
+    if not candidates:
+        raise RuntimeError("No valid trustworthy deals after filtering")
+
+    candidates.sort()
+    current_price, negative_score, _, best_deal, baseline_price, percent_drop = candidates[0]
+    best_score = -negative_score
+
     return best_deal, baseline_price, percent_drop, best_score
 
 
@@ -299,7 +340,7 @@ def run_deal_alerts(dry_run: bool = False, limit: int | None = None) -> dict:
         }
         deal_destination = _normalized_code(best_deal.get("destination", ""))
 
-        if deal_origin != alert_origin and deal_origin not in {"OAK", "SJC", "BUR", "ONT"}:
+        if deal_origin != alert_origin:
             print(f"Skipping send: origin mismatch ({deal_origin} != {alert_origin})")
             skipped_quality_gate += 1
             continue

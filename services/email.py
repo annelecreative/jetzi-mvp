@@ -180,10 +180,10 @@ def compose_deal_alert_email(
 
     traveler_label = "traveler" if adults == 1 else "travelers"
 
-    subject = f"{origin} → {destination} for {_format_money(rounded_per_traveler_price, currency)} per traveler ✈️"
+    subject = f"Fare spotted: {origin} → {destination} for {_format_money(rounded_per_traveler_price, currency)} ✈️"
 
     text_lines: List[str] = [
-        f"{origin} → {destination} for {_format_money(rounded_per_traveler_price, currency)} per traveler",
+        f"Jetzi spotted this fare: {origin} → {destination} for {_format_money(rounded_per_traveler_price, currency)} per traveler",
         confidence_line,
         "Book soon — deals like this usually don’t last.",
         "",
@@ -291,7 +291,7 @@ def compose_deal_alert_email(
               Jetzi
             </div>
             <h1 style="margin:8px 0 10px 0;font-size:34px;line-height:1.1;font-weight:800;color:#0f172a;">
-              {_escape(origin)} → {_escape(destination)} for {_escape(_format_money(rounded_per_traveler_price, currency))} per traveler
+              Jetzi spotted this fare: {_escape(origin)} → {_escape(destination)} for {_escape(_format_money(rounded_per_traveler_price, currency))} per traveler
             </h1>
             <p style="margin:0;font-size:18px;line-height:1.6;color:#334155;">
               {_escape(confidence_line)}
@@ -327,6 +327,9 @@ def compose_deal_alert_email(
 
             {cta_html}
 
+            <p style="margin:12px 0 0 0;font-size:13px;line-height:1.6;color:#64748b;">
+              Prices can change quickly, and Google Flights may show different live fares when you search.
+            </p>
             <p style="margin:20px 0 0 0;font-size:14px;line-height:1.7;color:#475569;">
               You’re receiving this because Jetzi is watching flights based on your preferences and only flags deals that look worth booking.
             </p>

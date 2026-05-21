@@ -579,7 +579,7 @@ def _retrieve_shared_offers(alert: Dict[str, Any]) -> List[Dict[str, Any]]:
     live_duffel_calls = 0
 
     MAX_ERRORS = 2
-    MAX_LIVE_DUFFEL_CALLS = 3
+    MAX_LIVE_DUFFEL_CALLS = 5
 
     for destination in destinations:
         for outbound_date in outbound_dates:
